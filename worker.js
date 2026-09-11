@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'inventory-count-api', build: 'v9' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v10-move' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -72,15 +72,12 @@ export default {
 // ---------------- dispatcher ----------------
 async function handle(fn, args, env) {
   args = args || [];
-  if (fn === 'getLogs') return getLogs(env);   // reads a SEPARATE, read-only workbook
+  if (fn === 'getLogs') return getLogs(env);          // reads a SEPARATE, read-only workbook
+  if (fn === 'getBuildings') return getBuildings(env); // reads the Movements workbook's Buildings tab
+  if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
   const sheets = await makeSheets(env);
   switch (fn) {
-    case 'getLookups': return getLookups(sheets);
-    case 'appendEntry': return appendEntry(sheets, args[0], args[1]);
-    case 'getEntries': return getEntries(sheets);
-    case 'updateEntry': return updateEntry(sheets, args[0]);
-    case 'deleteEntry': return deleteEntry(sheets, args[0]);
-    case 'clearDept': return clearDept(sheets, args[0]);
+    case 'getLookups': return getLookups(sheets);   // READ ONLY — the lookup workbook is never written
     default:
       throw new Error('Unknown function: ' + fn);
   }
@@ -125,6 +122,67 @@ async function getLogs(env) {
     parseLog(findTab('plastics log')),
   ]);
   return { metals: metals, plastics: plastics };
+}
+
+// ---------------- Live Inventory: movements (read + write) ----------------
+// A SEPARATE workbook is the movement log. We READ its Buildings map and APPEND movement rows.
+// The service account needs EDITOR here. The lookup workbook (DEFAULT_SHEET_ID) stays read-only.
+const MOVEMENTS_SHEET_ID = '1xaXUqrRbr3C6yM10Tw9a0ctL2zjbrrNAFzn3ZPNr704';
+const MOVEMENTS_TAB = 'Movements';
+const BUILDINGS_TAB = 'Buildings';
+// Movements tab — 21 columns, A:U, written BY POSITION (this order is the contract).
+const MOVEMENTS_HEADER = [
+  'Movement ID', 'Logged At', 'Event Date', 'User', 'Barcode', 'Product', 'Description',
+  'Kind', 'Entry Method', 'Qty Entered', 'UOM', 'Units Per Pallet', 'Qty Each',
+  'From Building', 'From Location', 'To Building', 'To Location', 'Reference', 'Note', 'Flags', 'Voids',
+];
+
+// A production environment (Metals/Plastics Production) is a creation + transformation point;
+// moving stock INTO one is flagged "In Production".
+function isProductionBuilding(name) { return /production/i.test(String(name || '')); }
+
+// Buildings tab: Building | Staging Location | Location Prefix | Counts As Inventory | Sort Order
+async function getBuildings(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  let values;
+  try { values = await sheets.readAll(BUILDINGS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
+  return (values || []).slice(1)
+    .filter((r) => str_(r[0]))
+    .map((r) => ({
+      name: str_(r[0]), staging: str_(r[1]), prefix: str_(r[2]),
+      countsAsInventory: (r[3] === true || String(r[3]).trim().toUpperCase() === 'TRUE'),
+      sort: (Number(r[4]) || 0), production: isProductionBuilding(r[0]),
+    }))
+    .sort((a, b) => a.sort - b.sort);
+}
+
+// Append one movement row to the Movements sheet. Server stamps the ID + Logged At and flags
+// "In Production" when the destination is a production environment.
+async function logMovement(env, m) {
+  m = m || {};
+  if (!str_(m.product)) throw new Error('Missing product');
+  if (!str_(m.fromBuilding)) throw new Error('Missing From building');
+  if (!str_(m.toBuilding)) throw new Error('Missing To building');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const when = new Date();
+  const loggedAt = when.toISOString();
+  const entryMethod = String(m.entryMethod).toLowerCase() === 'each' ? 'Each' : 'Pallets';
+  const qEntered = (m.qtyEntered === '' || m.qtyEntered == null) ? '' : Number(m.qtyEntered);
+  const perPallet = (m.unitsPerPallet === '' || m.unitsPerPallet == null) ? '' : Number(m.unitsPerPallet);
+  const qtyEach = (m.qtyEach !== '' && m.qtyEach != null && !isNaN(Number(m.qtyEach)))
+    ? Math.round(Number(m.qtyEach))
+    : (entryMethod === 'Pallets' ? Math.round((Number(qEntered) || 0) * (Number(perPallet) || 0)) : Math.round(Number(qEntered) || 0));
+  const flags = isProductionBuilding(m.toBuilding) ? 'In Production' : str_(m.flags);
+  const id = str_(m.movementId) || ('MV-' + when.getTime().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase());
+  const row = [
+    id, loggedAt, str_(m.eventDate) || loggedAt.slice(0, 10), str_(m.user), str_(m.barcode),
+    str_(m.product), str_(m.desc), str_(m.kind), entryMethod, qEntered, entryMethod, perPallet, qtyEach,
+    str_(m.fromBuilding), str_(m.fromLocation), str_(m.toBuilding), str_(m.toLocation),
+    str_(m.reference), str_(m.note), flags, '',
+  ];
+  await sheets.appendEnsuring(MOVEMENTS_TAB, row, MOVEMENTS_HEADER);
+  return { movementId: id, loggedAt: loggedAt, qtyEach: qtyEach, flags: flags };
 }
 
 // ---------------- value helpers (match the old Apps Script) ----------------
