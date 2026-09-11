@@ -1,39 +1,48 @@
 /**
- * Inventory Count — Cloudflare Worker (BACKEND)
+ * CSC Live Inventory — Cloudflare Worker (BACKEND)
  * ------------------------------------------------------------------------------------------
- * Front end is on GitHub Pages; this Worker is the backend. The browser POSTs {fn, args} here
- * and this reads/writes the Google Sheet directly using a service account (no Apps Script).
+ * Perpetual-inventory movement logger for the shipping / warehouse floor.
  *
- * Self-contained: paste this whole file into a dashboard Worker (Create Worker > Edit code),
- * or deploy with wrangler. Set these variables (Settings > Variables and Secrets):
- *   GCP_SA_EMAIL        (secret)  service account email  (client_email in the key JSON)
+ * The browser (GitHub Pages) POSTs {fn, args} here. This Worker:
+ *   • READS the product master (three lookup tabs) — read-only, never written.
+ *   • READS the Buildings map from the Movements workbook.
+ *   • WRITES one row per stock movement to the Movements workbook.
+ *
+ * Deploy: paste this whole file into a dashboard Worker (Create Worker > Edit code > Deploy),
+ * or `wrangler deploy`. Set these in Settings > Variables and Secrets:
+ *   GCP_SA_EMAIL        (secret)  service account email (client_email in the key JSON)
  *   GCP_SA_PRIVATE_KEY  (secret)  the private_key from the key JSON (PEM; literal \n is fine)
- *   SHEET_ID            (var)     spreadsheet id (optional; defaults to the Inventory workbook)
- *   ALLOWED_ORIGIN      (var)     e.g. https://jmarrujo-jpg.github.io  (optional; default *)
+ *   ALLOWED_ORIGIN      (var)     e.g. https://jmarrujo-jpg.github.io  (locks CORS; default *)
  *   API_TOKEN           (secret)  optional shared token; if set, the client must send it
+ *   MOVEMENTS_TAB       (var)     optional; which tab to append movements to.
+ *                                 Defaults to 'Movements'. Set to e.g. 'Movements_Sandbox'
+ *                                 while testing — the Worker auto-creates the tab + header.
  *
- * Reads AND writes are live: getLookups() serves the three lookup tabs, appendEntry() writes a
- * counted row to the Metals / Plastics tabs — the same contract the Apps Script backend used.
+ * The service account must have EDITOR on the Movements workbook and VIEWER on the lookup
+ * workbook. Both sheet IDs are baked in below (override the Movements one with SHEET_ID).
  */
 
-// Inventory workbook id — used when the SHEET_ID variable isn't set. Override it by setting a
-// SHEET_ID variable on the Worker if the workbook ever changes.
-const DEFAULT_SHEET_ID = '1GNw1gAnB1jI9L6PdUoUeQAlOKCHlPJ1f0-kxcQroI9U';
+// ---- Spreadsheet IDs ----
+// Movements workbook (read Buildings + write Movements). Override with a SHEET_ID variable.
+const DEFAULT_MOVEMENTS_SHEET_ID = '1xaXUqrRbr3C6yM10Tw9a0ctL2zjbrrNAFzn3ZPNr704';
+// Product master / lookups (READ ONLY — never write here).
+const LOOKUP_SHEET_ID = '1GNw1gAnB1jI9L6PdUoUeQAlOKCHlPJ1f0-kxcQroI9U';
 
-// ---- Tab names (change here if you rename tabs) ----
-const TAB = {
-  ends: 'Ends_Lookup',
-  cans: 'Cans_Lookup',
-  plastics: 'Plastics_Lookup',
-  metalsOut: 'Metals',
-  plasticsOut: 'Plastics',
-};
+// ---- Tab names ----
+const LOOKUP_TAB = { ends: 'Ends_Lookup', cans: 'Cans_Lookup', plastics: 'Plastics_Lookup' };
+const BUILDINGS_TAB = 'Buildings';
+const DEFAULT_MOVEMENTS_TAB = 'Movements';
+
+// Movements tab layout — 21 columns, A:U, written BY POSITION (order is the contract).
+export const MOVEMENTS_HEADER = [
+  'Movement ID', 'Logged At', 'Event Date', 'User', 'Barcode', 'Product', 'Description',
+  'Kind', 'Entry Method', 'Qty Entered', 'UOM', 'Units Per Pallet', 'Qty Each',
+  'From Building', 'From Location', 'To Building', 'To Location', 'Reference', 'Note',
+  'Flags', 'Voids',
+];
 
 export default {
   async fetch(request, env) {
-    // Echo the caller's Origin so the CORS header always matches (avoids a misconfigured
-    // ALLOWED_ORIGIN silently blocking the app). If ALLOWED_ORIGIN is set to a specific origin,
-    // only that origin is allowed; otherwise any origin is echoed back.
     const reqOrigin = request.headers.get('Origin') || '*';
     const allowOrigin = (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN !== '*')
       ? (env.ALLOWED_ORIGIN === reqOrigin ? reqOrigin : env.ALLOWED_ORIGIN)
@@ -48,7 +57,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'inventory-count-api', build: 'v1' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v1' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -69,70 +78,163 @@ export default {
 
 // ---------------- dispatcher ----------------
 async function handle(fn, args, env) {
-  const sheets = await makeSheets(env);
+  const api = await makeApi(env);
+  const movementsId = env.SHEET_ID || DEFAULT_MOVEMENTS_SHEET_ID;
+  const movementsTab = env.MOVEMENTS_TAB || DEFAULT_MOVEMENTS_TAB;
   args = args || [];
   switch (fn) {
-    case 'getLookups': return getLookups(sheets);
-    case 'appendEntry': return appendEntry(sheets, args[0], args[1]);
+    case 'bootstrap': return bootstrap(api, movementsId);
+    case 'logMovement': return logMovement(api, movementsId, movementsTab, args[0]);
+    case 'recentMovements': return recentMovements(api, movementsId, movementsTab, args[0]);
+    // Back-compat: the old scanner page still calls getLookups().
+    case 'getLookups': return (await bootstrap(api, movementsId)).lookups;
     default:
       throw new Error('Unknown function: ' + fn);
   }
 }
 
-// ---------------- value helpers (match the old Apps Script) ----------------
-function str_(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
-function num_(v) {
+// ---------------- value helpers ----------------
+export function str_(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
+export function num_(v) {
   if (v === '' || v === null || v === undefined) return '';
   const n = Number(v);
   return isNaN(n) ? str_(v) : n;
 }
+function asNum(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
+function asBool(v) { return v === true || String(v).trim().toUpperCase() === 'TRUE'; }
+
+// A production environment is a creation/transformation point (Metals Production, Plastics
+// Production). Moving stock INTO one is flagged "In Production".
+export function isProductionBuilding(name) { return /production/i.test(String(name || '')); }
+
+// Total units for a movement. Entering by pallet multiplies by units-per-pallet; by each is 1:1.
+export function computeQtyEach(entryMethod, qtyEntered, unitsPerPallet) {
+  const q = asNum(qtyEntered);
+  if (String(entryMethod).toLowerCase() === 'pallets') return Math.round(q * asNum(unitsPerPallet));
+  return Math.round(q);
+}
+
+// Build the 21-column movement row (by position). Server stamps ID + Logged At.
+export function buildMovementRow(m, now) {
+  m = m || {};
+  const when = now || new Date();
+  const loggedAt = when.toISOString();
+  const eventDate = str_(m.eventDate) || loggedAt.slice(0, 10);
+  const entryMethod = String(m.entryMethod).toLowerCase() === 'pallets' ? 'Pallets' : 'Each';
+  const qtyEntered = asNum(m.qtyEntered);
+  const unitsPerPallet = m.unitsPerPallet === '' || m.unitsPerPallet == null ? '' : asNum(m.unitsPerPallet);
+  const qtyEach = computeQtyEach(entryMethod, qtyEntered, unitsPerPallet);
+  const flags = isProductionBuilding(m.toBuilding) ? 'In Production' : str_(m.flags);
+  const movementId = str_(m.movementId) || genMovementId(when);
+  return [
+    movementId,                 // 1  Movement ID
+    loggedAt,                   // 2  Logged At (server, ISO)
+    eventDate,                  // 3  Event Date
+    str_(m.user),               // 4  User
+    str_(m.barcode),            // 5  Barcode (scanned)
+    str_(m.product),            // 6  Product (canonical SKU/code)
+    str_(m.desc),               // 7  Description
+    str_(m.kind),               // 8  Kind (coarse: Metals / Plastics)
+    entryMethod,                // 9  Entry Method
+    qtyEntered,                 // 10 Qty Entered
+    entryMethod,                // 11 UOM
+    unitsPerPallet,             // 12 Units Per Pallet
+    qtyEach,                    // 13 Qty Each (total units)
+    str_(m.fromBuilding),       // 14 From Building
+    str_(m.fromLocation),       // 15 From Location
+    str_(m.toBuilding),         // 16 To Building
+    str_(m.toLocation),         // 17 To Location
+    str_(m.reference),          // 18 Reference
+    str_(m.note),               // 19 Note
+    flags,                      // 20 Flags
+    '',                         // 21 Voids
+  ];
+}
+
+function genMovementId(when) {
+  const t = (when || new Date()).getTime().toString(36).toUpperCase();
+  const r = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return 'MV-' + t + '-' + r;
+}
 
 // ---------------- backend functions ----------------
-// Ends_Lookup:     Label Code  | Description | Per Pallet     | Weight | Type
-// Cans_Lookup:     Label Number | Description | Per Pallet
-// Plastics_Lookup: Item #       | Description | Type           | Per Pallet/Box
-async function getLookups(sheets) {
-  const [ends, cans, plastics] = await Promise.all([
-    sheets.rows(TAB.ends),
-    sheets.rows(TAB.cans),
-    sheets.rows(TAB.plastics),
+// Load everything the movement flow needs in one round trip: product master + buildings.
+async function bootstrap(api, movementsId) {
+  const [ends, cans, plastics, buildings] = await Promise.all([
+    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.ends),
+    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.cans),
+    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.plastics),
+    api.values(movementsId, BUILDINGS_TAB),
   ]);
   return {
-    ends: ends.filter((r) => str_(r[1])).map((r) => ({
-      code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]), weight: str_(r[3]), type: str_(r[4]),
-    })),
-    cans: cans.filter((r) => str_(r[1])).map((r) => ({
-      code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]),
-    })),
-    plastics: plastics.filter((r) => str_(r[1])).map((r) => ({
-      code: str_(r[0]), desc: str_(r[1]), type: str_(r[2]), perUnit: num_(r[3]),
-    })),
+    lookups: {
+      // Ends_Lookup: Label Code | Description | Per Pallet | Weight | Type
+      ends: rowsToItems(ends, (r) => ({
+        code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]), weight: str_(r[3]), type: str_(r[4]),
+        kind: 'Ends', cat: 'Metals',
+      })),
+      // Cans_Lookup: Label Number | Description | Per Pallet
+      cans: rowsToItems(cans, (r) => ({
+        code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]),
+        kind: 'Cans', cat: 'Metals',
+      })),
+      // Plastics_Lookup: Item # | Description | Type | Per Pallet/Box
+      plastics: rowsToItems(plastics, (r) => ({
+        code: str_(r[0]), desc: str_(r[1]), type: str_(r[2]), perUnit: num_(r[3]),
+        kind: 'Plastics', cat: 'Plastics',
+      })),
+    },
+    buildings: buildingsFromRows(buildings),
   };
 }
 
-/**
- * Append one counted entry. dept = 'metals' or 'plastics'.
- * The Sheets values:append (INSERT_ROWS) is atomic server-side, so concurrent counters
- * appending at once each get their own new row — no LockService needed.
- */
-async function appendEntry(sheets, e, dept) {
-  e = e || {};
-  let tab, row;
-  if (dept === 'plastics') {
-    tab = TAB.plasticsOut;
-    // Timestamp | Counter | Item # | Description | Type | Per Unit | Full | Extra | Total | Location
-    row = [e.ts, e.counter, e.code, e.desc, e.type, e.per, e.full, e.extra, e.total, e.loc];
-  } else {
-    tab = TAB.metalsOut;
-    // Timestamp | Counter | Category | Code | Description | Weight | Type | Per Unit | Full | Extra | Total | Location
-    row = [e.ts, e.counter, e.category, e.code, e.desc, e.weight, e.type, e.per, e.full, e.extra, e.total, e.loc];
-  }
-  await sheets.append(tab, row);
-  return true;
+function rowsToItems(values, mapFn) {
+  return (values || []).slice(1).filter((r) => str_(r[1])).map(mapFn);
+}
+
+// Buildings: Building | Staging Location | Location Prefix | Counts As Inventory | Sort Order
+function buildingsFromRows(values) {
+  return (values || []).slice(1)
+    .filter((r) => str_(r[0]))
+    .map((r) => ({
+      name: str_(r[0]),
+      staging: str_(r[1]),
+      prefix: str_(r[2]),
+      countsAsInventory: asBool(r[3]),
+      sort: asNum(r[4]),
+      production: isProductionBuilding(r[0]),
+    }))
+    .sort((a, b) => a.sort - b.sort);
+}
+
+async function logMovement(api, movementsId, movementsTab, m) {
+  m = m || {};
+  if (!str_(m.product)) throw new Error('Missing product');
+  if (!str_(m.fromBuilding)) throw new Error('Missing From building');
+  if (!str_(m.toBuilding)) throw new Error('Missing To building');
+  const row = buildMovementRow(m, new Date());
+  await api.ensureTab(movementsId, movementsTab, MOVEMENTS_HEADER);
+  await api.appendRow(movementsId, movementsTab, row);
+  return { movementId: row[0], loggedAt: row[1], qtyEach: row[12], flags: row[19] };
+}
+
+async function recentMovements(api, movementsId, movementsTab, limit) {
+  const n = Math.max(1, Math.min(200, asNum(limit) || 25));
+  let values;
+  try { values = await api.values(movementsId, movementsTab); }
+  catch (e) { return []; } // tab may not exist yet
+  const rows = (values || []).slice(1); // drop header
+  return rows.slice(-n).reverse().map((r) => ({
+    movementId: str_(r[0]), loggedAt: str_(r[1]), user: str_(r[3]),
+    product: str_(r[5]), desc: str_(r[6]), kind: str_(r[7]),
+    qtyEach: num_(r[12]), fromBuilding: str_(r[13]), toBuilding: str_(r[15]),
+    flags: str_(r[19]),
+  }));
 }
 
 // ---------------- Google auth + Sheets ----------------
 let cachedToken = null;
+const ensuredTabs = new Set();
 
 function b64urlBytes(bytes) {
   let s = '';
@@ -172,11 +274,10 @@ async function getToken(env) {
   cachedToken = await mintToken(env);
   return cachedToken.token;
 }
-async function makeSheets(env) {
+async function makeApi(env) {
   const token = await getToken(env);
-  const id = env.SHEET_ID || DEFAULT_SHEET_ID;
-  const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
   const auth = { Authorization: 'Bearer ' + token };
+  const base = (id) => 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
   async function call(url, opts) {
     const r = await fetch(url, opts);
     const t = await r.text();
@@ -185,17 +286,35 @@ async function makeSheets(env) {
     return j;
   }
   return {
-    id,
-    // Read every data row (row 2 onward) of a tab as raw values.
-    async rows(tab) {
-      const j = await call(base + '/values/' + encodeURIComponent(tab)
+    // Read all rows of a tab as raw values (header included).
+    async values(sheetId, tab) {
+      const j = await call(base(sheetId) + '/values/' + encodeURIComponent(tab)
         + '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER', { headers: auth });
-      const values = j.values || [];
-      return values.slice(1); // drop the header row
+      return j.values || [];
     },
-    async append(tab, row) {
-      return call(base + '/values/' + encodeURIComponent(tab) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS',
+    // Append a row at the table origin (A1) so a stray cell can't offset the write.
+    async appendRow(sheetId, tab, row) {
+      return call(base(sheetId) + '/values/' + encodeURIComponent(tab + '!A1')
+        + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
         { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [row] }) });
+    },
+    // Create the tab + header row if it doesn't exist yet (cached per isolate).
+    async ensureTab(sheetId, tab, header) {
+      const key = sheetId + '::' + tab;
+      if (ensuredTabs.has(key)) return;
+      const meta = await call(base(sheetId) + '?fields=sheets.properties.title', { headers: auth });
+      const titles = (meta.sheets || []).map((s) => s.properties.title);
+      if (!titles.includes(tab)) {
+        await call(base(sheetId) + ':batchUpdate', {
+          method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tab } } }] }),
+        });
+        await call(base(sheetId) + '/values/' + encodeURIComponent(tab + '!A1') + '?valueInputOption=RAW', {
+          method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [header] }),
+        });
+      }
+      ensuredTabs.add(key);
     },
   };
 }

@@ -4,6 +4,6 @@
 #
 # The Worker's name in the Cloudflare dashboard must match "name" below, or wrangler will deploy
 # to a Worker with this name instead. Change it to match your Worker if you named it something else.
-name = "inventory-count-api"
+name = "live-inventory"
 main = "worker.js"
 compatibility_date = "2024-11-06"
