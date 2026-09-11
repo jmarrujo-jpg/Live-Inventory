@@ -386,6 +386,9 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .inv-bh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 14px;background:var(--dept-soft);border-bottom:1px solid var(--line)}
 .inv-bn{font-family:'Archivo';font-weight:900;font-size:17px;color:var(--dept);letter-spacing:-.01em}
 .inv-prod{font-family:inherit;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#B26A00;background:#FFF3DC;padding:1px 6px;border-radius:6px;margin-left:6px}
+.inv-unmapped{font-family:inherit;font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#b23b3b;background:#fde8e8;padding:1px 6px;border-radius:6px;margin-left:6px}
+.inv-b.staged .inv-bh{background:#EAF3FB;border-bottom-color:#cfe2f2}
+.inv-b.staged .inv-bn{color:#1b6fb3}
 .inv-bt{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap}
 .inv-rows{display:flex;flex-direction:column}
 .inv-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line)}
@@ -578,7 +581,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v59-inventory';
+var APP_VERSION = 'v60-staged-inv';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -756,6 +759,20 @@ function computeInventory(){
   });
   return inv;
 }
+// Products flagged "Staged for Shipment" by our movements: { productKey -> {code,desc,qty,bldgs} }.
+function computeStaged(){
+  const out = {};
+  (MOVES||[]).forEach(function(m){
+    if(m.voided || !m.staged) return;
+    const qv = Number(m.qtyEach)||0; if(!qv) return;
+    const id = invKey(m.barcode||m.product, m.desc); if(!id.key) return;
+    const P = out[id.key] || (out[id.key] = { code:id.code, desc:id.desc, qty:0, bldgs:{} });
+    P.qty += qv;
+    const bn = m.toBuilding || '—';
+    P.bldgs[bn] = (P.bldgs[bn]||0) + qv;
+  });
+  return out;
+}
 function renderInventory(){
   const host=$('invBody'); if(!host) return;
   const ready = (LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
@@ -779,8 +796,10 @@ function renderInventory(){
     const total = rows.reduce(function(s,p){ return s+p.qty; }, 0);
     gUnits += total; gLines += rows.length; shownB++;
     const b = buildingByName(name);
+    const badge = (b && b.production) ? '<span class="inv-prod">production</span>'
+                : (!b ? '<span class="inv-unmapped" title="This location prefix has no row in the Buildings tab">unmapped location</span>' : '');
     html += '<div class="inv-b"><div class="inv-bh">'
-      + '<span class="inv-bn">'+esc(name)+(b&&b.production?'<span class="inv-prod">production</span>':'')+'</span>'
+      + '<span class="inv-bn">'+esc(name)+badge+'</span>'
       + '<span class="inv-bt">'+total.toLocaleString()+' units · '+rows.length+' item'+(rows.length===1?'':'s')+'</span></div>'
       + '<div class="inv-rows">'
       + rows.map(function(p){
@@ -792,7 +811,28 @@ function renderInventory(){
   });
   const s=$('invSummary');
   if(s) s.textContent = gUnits.toLocaleString()+' units · '+gLines+' lines · '+shownB+' building'+(shownB===1?'':'s');
-  host.innerHTML = html || '<div class="inv-empty">'+(q?'No products match “'+esc(q)+'.”':'No live inventory yet — counts and moves will show up here.')+'</div>';
+  // ---- Staged-for-shipping breakdown, at the bottom of the tables ----
+  const staged = computeStaged();
+  const sk = Object.keys(staged)
+    .filter(function(k){ const p=staged[k]; return p.qty>0 && (!q || norm(p.code).indexOf(q)!==-1 || norm(p.desc).indexOf(q)!==-1 || Object.keys(p.bldgs).some(function(bn){ return norm(bn).indexOf(q)!==-1; })); })
+    .sort(function(a,b){ return staged[b].qty - staged[a].qty; });
+  let stagedHtml='';
+  if(sk.length){
+    const sTotal = sk.reduce(function(t,k){ return t+staged[k].qty; }, 0);
+    stagedHtml = '<div class="inv-b staged"><div class="inv-bh">'
+      + '<span class="inv-bn">📦 Staged for shipment</span>'
+      + '<span class="inv-bt">'+sTotal.toLocaleString()+' units · '+sk.length+' item'+(sk.length===1?'':'s')+'</span></div>'
+      + '<div class="inv-rows">'
+      + sk.map(function(k){
+          const p=staged[k];
+          const chips = Object.keys(p.bldgs).map(function(bn){ return esc(bn)+' '+p.bldgs[bn].toLocaleString(); }).join(' · ');
+          const sub = (p.desc && p.desc!==p.code) ? esc(p.desc)+' — '+chips : chips;
+          return '<div class="inv-row"><span class="inv-p"><b>'+esc(p.code||p.desc||'?')+'</b><span class="inv-d">'+sub+'</span></span>'
+            + '<span class="inv-q">'+p.qty.toLocaleString()+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  }
+  host.innerHTML = (html + stagedHtml) || '<div class="inv-empty">'+(q?'No products match “'+esc(q)+'.”':'No live inventory yet — counts and moves will show up here.')+'</div>';
 }
 function refreshInventory(){
   const btn=$('invRefresh'); if(btn){ btn.disabled=true; btn.textContent='…'; }
@@ -875,9 +915,17 @@ function loadSession(){
 }
 function restoreSession(s){
   if(!s) return;
-  // Always start on the landing screen; just restore the counter name. Entries stay loaded in
-  // state, so tapping a section shows the counts you'd already saved this session.
-  if($('counterName') && typeof s.counter==='string') $('counterName').value = s.counter;
+  // Restore the typed counter name. One-time cleanup: earlier builds auto-filled "Jonathan"/"Lisa",
+  // so clear those once (guarded by a flag) without wiping a name someone deliberately re-types.
+  let counter = (typeof s.counter==='string') ? s.counter : '';
+  try{
+    if(!localStorage.getItem('cscCounterMigrated_v1')){
+      if(counter==='Jonathan' || counter==='Lisa') counter='';
+      localStorage.setItem('cscCounterMigrated_v1','1');
+    }
+  }catch(e){}
+  if($('counterName')) $('counterName').value = counter;
+  persistSession();
 }
 
 const $ = id => document.getElementById(id);
@@ -957,19 +1005,9 @@ function activeIdx(){
 function activeEntries(){ return state.dept==='plastics'?state.entries.plastics:state.entries.metals; }
 
 /* ---- navigation ---- */
-// Default counter per department — mostly two people. Prefilled but fully editable; a name the
-// user typed themselves is left alone (we only overwrite a blank or the other dept's default).
-const DEPT_COUNTER = { metals:'Jonathan', plastics:'Lisa' };
-function autofillCounter(dept){
-  const def = DEPT_COUNTER[dept]; if(!def) return;
-  const el = $('counterName'); if(!el) return;
-  const cur = el.value.trim();
-  const known = Object.keys(DEPT_COUNTER).map(k=>DEPT_COUNTER[k]);
-  if(cur==='' || known.indexOf(cur)!==-1){ el.value=def; persistSession(); }
-}
+// No prefilled counter name — the field starts blank and is whatever the user types.
 function openDept(dept){
   state.dept = dept;
-  autofillCounter(dept);
   document.documentElement.style.setProperty('--dept', dept==='plastics'?'var(--plastic)':'var(--metal)');
   document.documentElement.style.setProperty('--dept-accent', dept==='plastics'?'var(--plastic-accent)':'var(--metal-accent)');
   document.documentElement.style.setProperty('--dept-soft', dept==='plastics'?'var(--plastic-soft)':'var(--metal-soft)');
@@ -1778,7 +1816,7 @@ async function saveEntry(){
     _saving=false;
     const flags=(res&&res.flags)||'';
     // Stack this movement onto the live on-hand right away (no round-trip needed for the next scan).
-    MOVES.push({ product:code||desc, barcode:code, desc:desc, kind:category, qtyEach:total, fromBuilding:from, toBuilding:to, voided:false });
+    MOVES.push({ product:code||desc, barcode:code, desc:desc, kind:category, qtyEach:total, fromBuilding:from, toBuilding:to, staged:!!state.staged, voided:false });
     activeEntries().unshift({code:code,desc:desc,category:category,per:per,full:full,extra:extra,total:total,from:from,to:to,flags:flags,counter:counter});
     persistSession(); renderRecent();
     toast('Saved \u00b7 '+total.toLocaleString()+' units'+(flags?' \u00b7 '+flags:''));

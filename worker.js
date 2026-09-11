@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v13-staged' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v14-staged-read' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -203,17 +203,20 @@ async function getMovements(env) {
   const H = values[0].map((h) => String(h).trim().toLowerCase());
   const at = (n) => H.indexOf(n);
   const iBarcode = at('barcode'), iProduct = at('product'), iDesc = at('description'), iKind = at('kind'),
-        iQtyEach = at('qty each'), iFrom = at('from building'), iTo = at('to building'), iVoids = at('voids');
+        iQtyEach = at('qty each'), iFrom = at('from building'), iTo = at('to building'),
+        iFlags = at('flags'), iVoids = at('voids');
   const g = (r, i) => (i === -1 ? '' : str_(r[i]));
   const out = [];
   for (let n = 1; n < values.length; n++) {
     const r = values[n] || [];
     const prod = g(r, iProduct), bc = g(r, iBarcode);
     if (!prod && !bc) continue;                      // skip blank rows
+    const flags = g(r, iFlags);
     out.push({
       product: prod, barcode: bc, desc: g(r, iDesc), kind: g(r, iKind),
       qtyEach: num_(iQtyEach === -1 ? '' : r[iQtyEach]),
       fromBuilding: g(r, iFrom), toBuilding: g(r, iTo),
+      flags: flags, staged: /staged for shipment/i.test(flags),
       voided: !!g(r, iVoids),
     });
   }
