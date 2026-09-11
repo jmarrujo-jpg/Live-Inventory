@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>CSC Live Inventory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,7 +148,7 @@ input,select{font-family:inherit;font-size:16px}
       <label>Scan or type a product</label>
       <div class="scan-input-wrap">
         <span class="readout">›</span>
-        <input id="scanInput" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="scan barcode / item #, then Enter">
+        <input id="scanInput" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus placeholder="scan barcode / item #, then Enter">
       </div>
       <div class="scan-hint">
         <span id="scanCountHint"></span>
@@ -176,7 +176,7 @@ input,select{font-family:inherit;font-size:16px}
 /* ===== Backend config ===== */
 var API_URL = 'https://live-inventory.jmarrujo.workers.dev';  // your Worker URL (see HOSTING.md)
 var API_SECRET = '';   // set only if you set API_TOKEN on the Worker
-var APP_VERSION = 'v4-live';
+var APP_VERSION = 'v5-live';
 
 function callApi(fn, args){
   return fetch(API_URL, {
@@ -212,7 +212,16 @@ function doScan(){
   if(it){ selectItem(it); $('scanInput').value=''; }
   else showNotFound(raw);
 }
-function focusScan(){ setTimeout(()=>$('scanInput').focus(),60); }
+function focusScan(){ setTimeout(()=>{ try{ $('scanInput').focus(); }catch(e){} },60); }
+/* Keep the scan box live for a hardware/wedge scanner: whenever no entry card is open,
+   the scan input should hold focus so scanned characters + Enter always land in it. */
+function scannerActive(){ return !state.product && $('searchWrap').classList.contains('hide'); }
+$('scanInput').addEventListener('blur', function(){ if(scannerActive()) setTimeout(function(){ if(scannerActive()) $('scanInput').focus(); }, 80); });
+document.addEventListener('click', function(e){
+  if(!scannerActive()) return;                     // a card or search is open — don't steal focus
+  if(e.target.closest('input,select,textarea,button,a,.linkbtn,.results')) return;
+  $('scanInput').focus();
+});
 function showNotFound(code){
   const nf = $('notFound');
   nf.classList.remove('hide');
