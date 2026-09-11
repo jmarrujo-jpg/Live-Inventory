@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v10-move' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v11-onescan' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -186,6 +186,7 @@ async function logMovement(env, m) {
 }
 
 // ---------------- value helpers (match the old Apps Script) ----------------
+function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 function str_(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
 function num_(v) {
   if (v === '' || v === null || v === undefined) return '';
@@ -374,11 +375,33 @@ async function makeSheets(env, overrideId) {
   const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
   const auth = { Authorization: 'Bearer ' + token };
   async function call(url, opts) {
-    const r = await fetch(url, opts);
-    const t = await r.text();
-    let j; try { j = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Sheets API non-JSON: ' + t.slice(0, 200)); }
-    if (!r.ok) throw new Error('Sheets API ' + r.status + ': ' + (j.error && j.error.message ? j.error.message : t.slice(0, 200)));
-    return j;
+    opts = opts || {};
+    const method = (opts.method || 'GET').toUpperCase();
+    // Only reads (GET) are auto-retried — retrying a write could duplicate a row that actually
+    // committed before its response failed. Google's 429 (rate limit) and 5xx (e.g. the 503
+    // "service is currently unavailable") are transient, so a read backs off and tries again.
+    const maxAttempts = method === 'GET' ? 4 : 1;
+    let lastErr;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let r, t;
+      try {
+        r = await fetch(url, opts);
+        t = await r.text();
+      } catch (e) {
+        lastErr = e;
+        if (attempt < maxAttempts) { await sleep(300 * attempt); continue; }
+        throw new Error('Sheets API request failed: ' + (e && e.message ? e.message : String(e)));
+      }
+      let j; try { j = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Sheets API non-JSON: ' + t.slice(0, 200)); }
+      if (!r.ok) {
+        if (method === 'GET' && (r.status === 429 || r.status >= 500) && attempt < maxAttempts) {
+          await sleep(300 * attempt); continue;
+        }
+        throw new Error('Sheets API ' + r.status + ': ' + (j.error && j.error.message ? j.error.message : t.slice(0, 200)));
+      }
+      return j;
+    }
+    throw lastErr || new Error('Sheets API failed');
   }
   return {
     id,

@@ -353,34 +353,9 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 <body>
 <div id="app">
 
-  <!-- LANDING -->
-  <section id="landing">
-    <div class="brand">
-      <img class="logo" alt="CSC" src="data:image/png;base64,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">
-      <h1>CSC Live Inventory</h1>
-    </div>
-    <p class="tagline">Pick a department, scan, then move stock building to building.</p>
-    <div class="choose">
-      <button class="dept-card metals" onclick="deptGate('metals')">
-        <svg class="glyph" width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 7h12M6 17h12"/></svg>
-        <span class="eyebrow">Dept 01 — Cans &amp; Ends</span>
-        <div><h2>Metals</h2><div class="sub">Scan a label, count cans and ends separately.</div></div>
-        <span class="go">Start counting →</span>
-      </button>
-      <button class="dept-card plastics" onclick="deptGate('plastics')">
-        <svg class="glyph" width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M5 8h14M9 5h6l1 3H8l1-3z"/></svg>
-        <span class="eyebrow">Dept 02 — Pails · Tubs · Lids</span>
-        <div><h2>Plastics</h2><div class="sub">Scan an item number to count all plastics.</div></div>
-        <span class="go">Start counting →</span>
-      </button>
-    </div>
-    <div class="landing-foot" id="landingFoot">Loading item lists…</div>
-  </section>
-
   <!-- COUNT -->
   <section id="count">
     <div class="topbar">
-      <button class="back" onclick="goHome()" aria-label="Back">←</button>
       <div class="title">
         <div class="dpt" id="deptTitle">Metals</div>
         <div class="who">Counter: <input id="counterName" placeholder="your name" autocomplete="off"></div>
@@ -458,31 +433,6 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 <div id="toast"></div>
 <div class="buildtag" id="buildTag"></div>
 
-<!-- prompt for manual check-value entries (Add weight!, Add type!, …) -->
-<div id="modal" class="modal hide">
-  <div class="modal-card">
-    <div class="modal-title" id="modalTitle"></div>
-    <div class="modal-hint" id="modalHint"></div>
-    <input id="modalInput" inputmode="none" readonly autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="enter value" onfocus="tkBind('modalInput')" onblur="tkOnBlur()">
-    <div class="modal-actions">
-      <button class="btn ghost" id="modalCancel">Cancel</button>
-      <button class="btn primary" id="modalOk">Add</button>
-    </div>
-  </div>
-</div>
-
-<!-- location sanity warning (entered spot is far from where you've been counting) -->
-<div id="warnModal" class="modal hide">
-  <div class="modal-card">
-    <div class="modal-title">Check location</div>
-    <div class="gate-warn" id="warnBody"></div>
-    <div class="modal-actions">
-      <button class="btn primary" id="warnFix">✎ Fix location</button>
-      <button class="btn ghost" id="warnOk">It’s correct</button>
-    </div>
-  </div>
-</div>
-
 <div id="calcModal" class="modal hide" onclick="if(event.target===this)closeCalc()">
   <div class="modal-card calc-card">
     <div class="calc-head">
@@ -517,30 +467,6 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
     <div class="calc-hist">
       <div class="lbl">Recent (last 3)</div>
       <div id="calcHist"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Append / Delete gate shown when opening a department -->
-<div id="deptGate" class="modal hide">
-  <div class="modal-card">
-    <div class="modal-title" id="gateTitle">Metals</div>
-    <!-- step 1: choose -->
-    <div id="gateStep1">
-      <div class="modal-hint">Keep adding to this section, or clear everything out of it and start fresh.</div>
-      <div class="gate-actions">
-        <button type="button" class="btn primary" onclick="gateAppend()">➕ Append — continue counting</button>
-        <button type="button" class="btn danger" onclick="gateAskDelete()">🗑 Delete all data</button>
-        <button type="button" class="btn ghost" onclick="gateClose()">← Go back</button>
-      </div>
-    </div>
-    <!-- step 2: confirm delete -->
-    <div id="gateStep2" class="hide">
-      <div class="gate-warn" id="gateWarn"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn primary" onclick="gateBack()">Cancel — keep data</button>
-        <button type="button" class="btn danger" id="gateConfirmBtn" onclick="gateConfirmDelete()">Delete all</button>
-      </div>
     </div>
   </div>
 </div>
@@ -584,7 +510,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v54-move';
+var APP_VERSION = 'v55-onescan';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -711,7 +637,48 @@ function isCheckValue(v){ return checkPrompt(v)!==null; }
 /* build code->item index per list */
 function indexOf(list){ const m={}; list.forEach(it=>{ if(it.code) m[norm(it.code)]=it; }); return m; }
 var IDX = { ends:{}, cans:{}, plastics:{} };
-function buildIndex(){ IDX = { ends:indexOf(DATA.ends), cans:indexOf(DATA.cans), plastics:indexOf(DATA.plastics) }; }
+function buildIndex(){ IDX = { ends:indexOf(DATA.ends), cans:indexOf(DATA.cans), plastics:indexOf(DATA.plastics) }; buildIndexAll(); }
+
+/* ONE combined catalog across all three lists — a single scan/search box hits every list at
+   once, and whichever list the match came from decides its category (Ends / Cans / Plastics).
+   No department tabs; the scan auto-detects. First list wins if a code somehow appears twice. */
+const LIST_ORDER = ['ends','cans','plastics'];
+var IDXALL = {};                         // codeNorm -> {it, key}
+function buildIndexAll(){
+  IDXALL = {};
+  LIST_ORDER.forEach(function(key){
+    (DATA[key]||[]).forEach(function(it){ if(it.code){ const k=norm(it.code); if(!IDXALL[k]) IDXALL[k]={it:it,key:key}; } });
+  });
+}
+function allProductCount(){ return DATA.ends.length + DATA.cans.length + DATA.plastics.length; }
+// Point state at the list a scanned/picked item came from, so the card renders the right fields.
+function setCategoryFromKey(key){
+  if(key==='plastics'){ state.dept='plastics'; }
+  else { state.dept='metals'; state.metalKind = (key==='cans'?'cans':'ends'); }
+  applyDeptTheme();
+  const t=$('deptTitle'); if(t) t.textContent = state.dept==='plastics' ? 'Plastics' : ('Metals / '+(state.metalKind==='cans'?'Cans':'Ends'));
+}
+// Theme colors + topbar title follow the last scanned item's category (cosmetic only).
+function applyDeptTheme(){
+  const dept=state.dept||'metals';
+  document.documentElement.style.setProperty('--dept', dept==='plastics'?'var(--plastic)':'var(--metal)');
+  document.documentElement.style.setProperty('--dept-accent', dept==='plastics'?'var(--plastic-accent)':'var(--metal-accent)');
+  document.documentElement.style.setProperty('--dept-soft', dept==='plastics'?'var(--plastic-soft)':'var(--metal-soft)');
+}
+// Skip the landing screen — the app opens straight on the single combined scan box.
+function enterApp(){
+  state.dept = state.dept || 'metals';
+  state.metalKind = state.metalKind || 'ends';
+  applyDeptTheme();
+  const t=$('deptTitle'); if(t) t.textContent='Live Inventory';
+  const ls=$('landing'); if(ls) ls.style.display='none';
+  $('count').style.display='flex';
+  const seg=$('metalSeg'); if(seg) seg.classList.add('hide');   // no Ends/Cans sub-tabs
+  state.mode='scan';
+  const tb=$('topBldg'); if(tb) tb.value=state.building||'';
+  clearCardOnly(); renderRecent(); updateHints(); syncMode();
+  focusScan();
+}
 
 function activeList(){
   if(state.dept==='plastics') return DATA.plastics;
@@ -770,54 +737,10 @@ function setMetalKind(k){
   if(state.mode==='scan') focusScan();
 }
 function updateHints(){
-  const list=activeList();
-  const withCode=list.filter(x=>x.code).length;
-  let t = `${list.length} items`;
-  if(state.dept==='metals' && state.metalKind==='cans'){
-    const nocode=list.length-withCode;
-    if(nocode>0) t += ` · ${nocode} have no barcode — use search`;
-  }
-  $('scanCountHint').textContent=t;
+  const total = allProductCount();
+  const hint=$('scanCountHint'); if(hint) hint.textContent = total ? (total.toLocaleString()+' products loaded') : '';
 }
 function focusScan(){ setTimeout(()=>{ const el=$('scanInput'); if(el){ el.focus({preventScroll:true}); } window.scrollTo({top:0,behavior:'smooth'}); },60); }
-
-/* ---- Append / Delete gate (shown when opening a department) ---- */
-var gateDept=null;
-function deptName(d){ return d==='plastics'?'Plastics':'Metals'; }
-function deptGate(dept){
-  gateDept=dept;
-  $('gateTitle').textContent=deptName(dept);
-  $('gateStep1').classList.remove('hide');   // always start on the choice, never on the delete confirm
-  $('gateStep2').classList.add('hide');
-  $('deptGate').classList.remove('hide');
-}
-function gateClose(){ $('deptGate').classList.add('hide'); }
-function gateAppend(){ gateClose(); openDept(gateDept); }
-function gateBack(){ $('gateStep2').classList.add('hide'); $('gateStep1').classList.remove('hide'); }  // second-guess exit
-function gateAskDelete(){
-  const other = gateDept==='plastics' ? 'Metals' : 'Plastics';
-  $('gateWarn').innerHTML = 'Are you sure you want to delete <b>ALL data</b> for <b>'+deptName(gateDept)+'</b>?'
-    + '<br><br>This permanently removes every counted row for '+deptName(gateDept)
-    + ' from the Google Sheet and can’t be undone. <b>'+other+'</b> data is not touched.';
-  $('gateStep1').classList.add('hide');
-  $('gateStep2').classList.remove('hide');
-}
-function gateConfirmDelete(){
-  const dept=gateDept;
-  const btn=$('gateConfirmBtn'); if(btn){ btn.disabled=true; btn.textContent='Deleting…'; }
-  callApi('clearDept',[dept]).then(function(){
-    if(dept==='plastics') state.entries.plastics=[]; else state.entries.metals=[];  // clear only this dept
-    persistSession();
-    if(btn){ btn.disabled=false; btn.textContent='Delete all'; }
-    gateClose();
-    openDept(dept);                       // open the now-empty section, ready to count
-    toast('All '+deptName(dept)+' data deleted');
-  }).catch(function(err){
-    if(btn){ btn.disabled=false; btn.textContent='Delete all'; }
-    toast('Delete failed — try again','err');
-    console.error(err);
-  });
-}
 
 /* ---- lookup / scan ---- */
 $('scanInput').addEventListener('keydown', e=>{
@@ -834,18 +757,15 @@ $('scanInput').addEventListener('input', ()=>{
     const raw=$('scanInput').value.trim();
     if(!raw) return;
     if(looksLikeDate(raw)){ clearScan(); toast('📅 Date barcode ignored — scan the product code'); return; }
-    const it=activeIdx()[norm(raw)];
-    if(it){ chooseItem(it); clearScan(false); }
+    const hit=IDXALL[norm(raw)];                          // one combined catalog — Ends/Cans/Plastics
+    if(hit){ setCategoryFromKey(hit.key); chooseItem(hit.it); clearScan(false); }
   }, 120);
 });
 function doScan(){
   const raw=$('scanInput').value.trim();
   if(!raw) return;
-  const key=norm(raw);
-  const it=activeIdx()[key];
-  if(it){ chooseItem(it); clearScan(false); return; }   // a real product code always wins
-  const other=otherListFor(key);                        // scanned under the wrong tab?
-  if(other){ showWrongList(raw, other); clearScan(false); return; }
+  const hit=IDXALL[norm(raw)];                            // a real product code always wins
+  if(hit){ setCategoryFromKey(hit.key); chooseItem(hit.it); clearScan(false); return; }
   if(looksLikeDate(raw)){ clearScan(); toast('📅 Date barcode ignored — scan the product code'); return; }
   if(isQuantity(raw)){ clearScan(); toast('🔢 Quantity ignored — scan the product code'); return; }
   showNotFound(raw);
@@ -868,7 +788,7 @@ function looksLikeDate(s){
 }
 function showNotFound(code){
   $('notFound').classList.remove('hide');
-  $('notFound').innerHTML=`<span>⚠</span><div><b>“${esc(code)}” not found</b> in ${state.dept==='plastics'?'Plastics':(state.metalKind)}.<br>
+  $('notFound').innerHTML=`<span>⚠</span><div><b>“${esc(code)}” not found</b> in the product list.<br>
     <span class="linkbtn" onclick="openSearchWith('${esc(code)}')">Search by description</span>
     <button type="button" class="btn primary nf-add" onclick="addManual('${esc(code)}')">➕ Add manually</button></div>`;
   clearCardOnly();
@@ -888,80 +808,30 @@ function openSearchWith(q){ openSearch(); $('searchInput').value=q; runSearch();
 function closeSearch(){ $('searchWrap').classList.add('hide'); $('searchToggle').textContent='Search by description'; $('results').classList.add('hide'); $('searchInput').value=''; $('searchX').classList.remove('show'); }
 function clearSearch(){ const inp=$('searchInput'); inp.value=''; $('results').classList.add('hide'); $('searchX').classList.remove('show'); inp.focus(); }
 $('searchInput').addEventListener('input', runSearch);
+var _searchHits=[];   // [{it,key}] currently shown by the search
 function runSearch(){
   const q=norm($('searchInput').value);
   const box=$('results');
   $('searchX').classList.toggle('show', $('searchInput').value.length>0);
   if(q.length<1){ box.classList.add('hide'); return; }
-  const hits=activeList().filter(it=> norm(it.desc).includes(q) || norm(it.code).includes(q)).slice(0,40);
-  if(!hits.length){
-    const alt=searchOtherLists(q);
-    if(alt){ _searchRedirect={key:alt.key};
-      box.innerHTML='<div class="empty">No matches in '+curListLabel()+'.<br><span class="linkbtn" onclick="doSearchRedirect()">Look in '+LIST_LABEL[alt.key]+' →</span></div>'; }
-    else { _searchRedirect=null; box.innerHTML='<div class="empty">No matches</div>'; }
-    box.classList.remove('hide'); return;
-  }
-  box.innerHTML=hits.map((it,i)=>{
-    return `<div class="row" onclick="pickResult(${DATA[listKey()].indexOf(it)})">
-      <span class="code ${it.code?'':'nocode'}">${it.code?esc(it.code):'no barcode'}</span>
-      <span class="d">${esc(it.desc)}</span></div>`;
+  _searchHits=[];
+  LIST_ORDER.forEach(function(key){
+    (DATA[key]||[]).forEach(function(it){
+      if(_searchHits.length>=40) return;
+      if(norm(it.desc).includes(q) || norm(it.code).includes(q)) _searchHits.push({it:it,key:key});
+    });
+  });
+  if(!_searchHits.length){ box.innerHTML='<div class="empty">No matches</div>'; box.classList.remove('hide'); return; }
+  box.innerHTML=_searchHits.map(function(h,i){
+    const it=h.it;
+    return '<div class="row" onclick="pickResult('+i+')">'
+      +'<span class="code '+(it.code?'':'nocode')+'">'+(it.code?esc(it.code):'no barcode')+'</span>'
+      +'<span class="d">'+esc(it.desc)+'</span></div>';
   }).join('');
   box.classList.remove('hide');
 }
-function listKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='ends'?'ends':'cans'); }
-function pickResult(i){ const it=DATA[listKey()][i]; closeSearch(); chooseItem(it); }
-
-/* ---- cross-tab redirect: a code scanned under the wrong Ends/Cans/Plastics tab ---- */
-const LIST_LABEL={ends:'Ends',cans:'Cans',plastics:'Plastics'};
-function curListLabel(){ return state.dept==='plastics'?'Plastics':(state.metalKind==='ends'?'Ends':'Cans'); }
-// Find a code in the lists OTHER than the one that's active right now.
-function otherListFor(codeNorm){
-  const order=['ends','cans','plastics'], cur=listKey();
-  for(let i=0;i<order.length;i++){
-    const k=order[i]; if(k===cur) continue;
-    const it=IDX[k]&&IDX[k][codeNorm];
-    if(it) return {key:k, it:it};
-  }
-  return null;
-}
-var _redirect=null;   // pending {code, key, norm} from a wrong-tab scan
-function showWrongList(code, other){
-  _redirect={code:code, key:other.key, norm:norm(code)};
-  const label=LIST_LABEL[other.key];
-  $('notFound').classList.remove('hide');
-  $('notFound').innerHTML='<span>↔</span><div><b>“'+esc(code)+'” is a '+label+' item</b>, not '+curListLabel()+'.<br>'
-    +'<button type="button" class="btn primary nf-add" onclick="doRedirect()">Switch to '+label+' &amp; count it</button>'
-    +'<span class="linkbtn" onclick="redirectAddHere()">Add here instead</span></div>';
-  clearCardOnly();
-}
-function doRedirect(){ if(!_redirect) return; const r=_redirect; _redirect=null; switchAndCount(r.key, r.norm); }
-function redirectAddHere(){ const r=_redirect; _redirect=null; if(r) showNotFound(r.code); }
-// Flip to the tab/department that actually has this code, then open its card — no delete/rescan.
-function switchAndCount(key, codeNorm){
-  $('notFound').classList.add('hide');
-  if(key==='plastics'){ if(state.dept!=='plastics') openDept('plastics'); }
-  else { if(state.dept!=='metals') openDept('metals'); setMetalKind(key); }
-  const open=function(){ const it=activeIdx()[codeNorm]; if(it) chooseItem(it); else toast('Switched to '+LIST_LABEL[key]); };
-  setTimeout(open, 60);   // let the tab switch settle, then open the card
-}
-// Search fell through on the current tab — offer the tab that does have a match.
-var _searchRedirect=null;
-function searchOtherLists(q){
-  const order=['ends','cans','plastics'], cur=listKey();
-  for(let i=0;i<order.length;i++){
-    const k=order[i]; if(k===cur) continue;
-    const hit=(DATA[k]||[]).some(it=> norm(it.desc).includes(q) || norm(it.code).includes(q));
-    if(hit) return {key:k};
-  }
-  return null;
-}
-function doSearchRedirect(){ if(!_searchRedirect) return; switchSearchTo(_searchRedirect.key); }
-function switchSearchTo(key){
-  const raw=$('searchInput').value;
-  if(key==='plastics'){ if(state.dept!=='plastics') openDept('plastics'); }
-  else { if(state.dept!=='metals') openDept('metals'); setMetalKind(key); }
-  openSearch(); const inp=$('searchInput'); if(inp){ inp.value=raw; runSearch(); }
-}
+// Picking a result sets the category from whichever list it came from, then opens the card.
+function pickResult(i){ const h=_searchHits[i]; if(!h) return; closeSearch(); setCategoryFromKey(h.key); chooseItem(h.it); }
 
 /* ---- read-only history log ("last counted here") ---- */
 // Loaded once from the SEPARATE log workbook via the worker's getLogs. Never written to.
@@ -1298,41 +1168,8 @@ function renderCalcHist(){
 }
 function reuseCalc(v){ const d=$('calcDisplay'); d.value=String(v); calcLast=calcEval(String(v)); $('calcResult').textContent=Number(v).toLocaleString(); }
 
-/* ---- check values: prompt for manual entries, append them to the code ---- */
-// Scan/pick entry point: resolve any check values first (via popup), then open the card.
-async function chooseItem(it){
-  let item = Object.assign({}, it);   // don't mutate the lookup row
-  const keys = ['desc','weight','type']; // scan all of them; undefined fields are skipped
-  for(let n=0;n<keys.length;n++){
-    const key = keys[n];
-    const prompt = checkPrompt(item[key]);
-    if(prompt===null) continue;
-    const val = await askValue(prompt, 'This gets added to the code (scanned: '+(item.code||'')+')');
-    if(val===null){ focusScan(); return; }                 // cancelled — abort this scan
-    item.code = (item.code ? item.code+' ' : '') + val;     // append the entry to the code / barcode
-    if(key==='weight' || key==='type') item[key]=val;       // put the value in its field
-    else item[key]='';                                      // clear the marker text (e.g. description)
-  }
-  // If the completed code matches a real lookup row (e.g. "243807 1"), use that row's full data.
-  const resolved = activeIdx()[norm(item.code)];
-  if(resolved) item = Object.assign({}, resolved);
-  selectItem(item);
-}
-// A small modal that asks for one value. Resolves to the trimmed string, or null if cancelled.
-function askValue(title, hint){
-  return new Promise(function(resolve){
-    const m=$('modal'), inp=$('modalInput');
-    $('modalTitle').textContent=title; $('modalHint').textContent=hint||''; inp.value='';
-    m.classList.remove('hide'); setTimeout(()=>inp.focus(),50);
-    function finish(v){ tkHide(); m.classList.add('hide'); $('modalOk').onclick=null; $('modalCancel').onclick=null; inp.onkeydown=null; resolve(v); }
-    $('modalOk').onclick=function(){ const v=inp.value.trim(); if(!v){ inp.focus(); return; } finish(v); };
-    $('modalCancel').onclick=function(){ finish(null); };
-    inp.onkeydown=function(e){
-      if(e.key==='Enter'){ e.preventDefault(); const v=inp.value.trim(); if(v) finish(v); }
-      else if(e.key==='Escape'){ finish(null); }
-    };
-  });
-}
+/* Open the card for a scanned/picked item — scan then enter, no pre-entry prompts. */
+function chooseItem(it){ selectItem(Object.assign({}, it)); }
 
 /* ---- edit / delete an existing entry ---- */
 function editEntry(i){
@@ -1622,58 +1459,6 @@ function clearCardOnly(){ kpHide(); $('cardMount').innerHTML=''; state.current=n
   if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.remove('hide'); } }
 function clearCard(){ clearCardOnly(); $('notFound').classList.add('hide'); if(state.mode==='row'){ renderRowPanel(); } else { focusScan(); } }
 
-/* ---- location sanity check ----
-   A common slip is dropping a digit (meaning M-088 but typing M-008 -> 8 instead of 88). We compare
-   the entered spot to the last few locations counted in the same building; if it's much further than
-   any of them, we flag it. This also catches jumping back to an already-counted area mid-count. */
-var LOC_JUMP = 10;   // how far (in location number) counts as "unexpectedly far"
-function locWarning(loc){
-  const p = parseLoc(loc);
-  if(p.num==='') return null;
-  const num = Number(p.num);
-  if(!isFinite(num)) return null;
-  if(num>=900 && num<=999) return null;    // 900s are staging locations — legitimately "far", never warn
-  // History to compare against, newest-first, minus the entry we're currently editing (so re-saving
-  // an edit of this very spot doesn't look like a revisit).
-  const editing = state.editIndex!=null;
-  const list = activeEntries().filter(function(e,i){ return !(editing && i===state.editIndex); });
-  const sameSpot = e => { const q=parseLoc(e.loc); return q.bldg===p.bldg && Number(q.num)===num; };
-
-  // --- Revisit check: this exact spot was already counted earlier, but the immediately-previous
-  //     entry is somewhere else. Counting the same spot back-to-back (stacking items) is fine;
-  //     leaving and coming back later is what we flag.
-  const countedBefore = list.some(sameSpot);
-  const backToBack = list.length>0 && sameSpot(list[0]);   // last thing counted was this same spot
-  if(countedBefore && !backToBack){
-    return '<b>'+esc(loc)+'</b> was already counted earlier this session.<br>You moved away and came back — adding more stock here, or is this a repeat?';
-  }
-
-  // --- Far-away check: number looks unreasonably distant from where you've been counting. ---
-  const refs = [];
-  for(let i=0;i<list.length && refs.length<5;i++){
-    const q = parseLoc(list[i].loc);
-    if(q.bldg===p.bldg && q.num!==''){ const n=Number(q.num); if(isFinite(n) && !(n>=900&&n<=999)) refs.push(n); }
-  }
-  if(refs.length<1) return null;           // need at least one prior spot to compare against
-  const nearest = Math.min.apply(null, refs.map(r=>Math.abs(r-num)));
-  if(nearest<=LOC_JUMP) return null;       // close to where you've been — fine
-  const pad = n => (p.bldg?p.bldg+'-':'')+String(n).padStart(3,'0');
-  const last = pad(refs[0]);   // refs[0] is the most recent same-building count (newest-first)
-  return '<b>'+esc(loc)+'</b> is further than expected.<br>You last counted at <b>'+last+'</b>.<br>Double-check the number (e.g. <b>8</b> vs <b>88</b>).';
-}
-function confirmLoc(bodyHtml){
-  return new Promise(function(resolve){
-    const m=$('warnModal');
-    $('warnBody').innerHTML=bodyHtml;
-    kpHide(); tkHide();          // no docked keypad left behind/over the dialog
-    m.classList.remove('hide');
-    lockScroll();                // freeze the page so taps land on the buttons instead of scrolling
-    function done(v){ unlockScroll(); m.classList.add('hide'); $('warnFix').onclick=null; $('warnOk').onclick=null; resolve(v); }
-    $('warnFix').onclick=function(){ done(false); };
-    $('warnOk').onclick=function(){ done(true); };
-  });
-}
-
 /* ---- save ---- */
 var _saving=false;   // in-flight guard so a double-tap can't save the same count twice
 async function saveEntry(){
@@ -1782,12 +1567,14 @@ function exportCSV(){
 /* ---- load lookup data from the Sheet on startup ---- */
 function onData(payload){
   DATA = payload; buildIndex();
-  var n = (DATA.ends.length+DATA.cans.length+DATA.plastics.length);
-  document.getElementById('landingFoot').textContent = n+' products \u00b7 '+BUILDINGS.length+' buildings loaded';
-  if(state.dept) updateHints();
+  const foot=document.getElementById('landingFoot');
+  if(foot) foot.textContent = allProductCount().toLocaleString()+' products \u00b7 '+BUILDINGS.length+' buildings loaded';
+  updateHints();
 }
 function onDataFail(err){
-  document.getElementById('landingFoot').textContent = 'Could not load item lists — reload the page.';
+  const foot=document.getElementById('landingFoot'); if(foot) foot.textContent='Could not load item lists — reload the page.';
+  const hint=$('scanCountHint'); if(hint) hint.textContent='Could not load products — reload the page.';
+  toast('Could not load products — reload','err');
   console.error(err);
 }
 Promise.all([callApi('getLookups',[]), callApi('getBuildings',[])]).then(function(r){
@@ -1838,6 +1625,7 @@ $('buildTag').textContent = APP_VERSION;
 /* ---- persist counter name + resume the saved session on open ---- */
 $('counterName').addEventListener('input', persistSession);
 restoreSession(loadSession());
+enterApp();               // skip the landing screen — one combined scan box
 initBuildingSelect();
 </script>
 </body>
