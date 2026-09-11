@@ -371,11 +371,40 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .calc-hist .h .rv{color:var(--dept);font-weight:800}
 .calc-hist .none{color:var(--ink-soft);font-size:12px}
 
+/* top view tabs (Move stock / Inventory) */
+.viewtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px 0}
+.viewtabs button{height:44px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-weight:800;font-size:14px;color:var(--ink-soft);cursor:pointer;transition:background .1s ease,color .1s ease,border-color .1s ease}
+.viewtabs button.on{background:var(--dept);border-color:var(--dept);color:#fff}
+.topbtn{flex:0 0 auto;height:44px;min-width:44px;padding:0 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-size:20px;font-weight:800;color:var(--dept);cursor:pointer}
+.topbtn:active{transform:scale(.96)}
+/* live inventory list */
+.invfilter{height:48px;width:100%;border:1.5px solid var(--line);border-radius:11px;background:#fff;padding:0 14px;font-size:16px;outline:none;margin-bottom:12px}
+.invfilter:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+.invbody{display:flex;flex-direction:column;gap:14px}
+.inv-empty{color:var(--ink-soft);text-align:center;padding:34px 10px;font-size:14px}
+.inv-b{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.inv-bh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 14px;background:var(--dept-soft);border-bottom:1px solid var(--line)}
+.inv-bn{font-family:'Archivo';font-weight:900;font-size:17px;color:var(--dept);letter-spacing:-.01em}
+.inv-prod{font-family:inherit;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#B26A00;background:#FFF3DC;padding:1px 6px;border-radius:6px;margin-left:6px}
+.inv-bt{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap}
+.inv-rows{display:flex;flex-direction:column}
+.inv-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line)}
+.inv-row:first-child{border-top:none}
+.inv-p{display:flex;flex-direction:column;gap:1px;min-width:0}
+.inv-p b{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink)}
+.inv-p .inv-d{font-size:12px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-q{font-family:'JetBrains Mono';font-weight:800;font-size:16px;color:var(--dept);white-space:nowrap}
 @media (min-width:560px){ .dept-card .sub{max-width:60%} }
 </style>
 </head>
 <body>
 <div id="app">
+
+  <!-- top tabs: move stock  /  live inventory -->
+  <div class="viewtabs">
+    <button type="button" id="tabMove" class="on" onclick="showView('move')">➕ Move stock</button>
+    <button type="button" id="tabInv" onclick="showView('inventory')">📦 Inventory</button>
+  </div>
 
   <!-- COUNT -->
   <section id="count">
@@ -450,6 +479,21 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
         <h3>Moves this session</h3>
         <div id="recentList"><div class="empty-recent">Scanned items will appear here after you save them.</div></div>
       </div>
+    </div>
+  </section>
+
+  <!-- LIVE INVENTORY (per building) -->
+  <section id="inventory" hidden>
+    <div class="topbar">
+      <div class="title">
+        <div class="dpt">Live inventory</div>
+        <div class="who" id="invSummary">Loading…</div>
+      </div>
+      <button type="button" class="topbtn" id="invRefresh" onclick="refreshInventory()" aria-label="Refresh">↻</button>
+    </div>
+    <div class="body">
+      <input id="invFilter" class="invfilter" placeholder="filter by product or building" autocomplete="off" oninput="renderInventory()">
+      <div id="invBody" class="invbody"></div>
     </div>
   </section>
 
@@ -534,7 +578,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v58-staged';
+var APP_VERSION = 'v59-inventory';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -555,7 +599,7 @@ var DATA = {ends:[],cans:[],plastics:[]};
 </script>
 <script>
 /* ====== APP LOGIC ====== */
-const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false };
+const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false, view:'move' };
 var rowSkips = {};   // per-location products the user marked "not here" in Count-by-Row (transient)
 
 /* Buildings loaded live from the Movements workbook's Buildings tab: {name, prefix, production}.
@@ -669,6 +713,103 @@ function pickFrom(i){
   state.building=o.name; persistSession();
   const tb=$('topBldg'); if(tb) tb.value=o.name;   // keep the (hidden) top select in sync
   renderFromTiles();
+}
+
+/* ---- live inventory per building (counts baseline + stacked movements, all products) ---- */
+// Canonicalize a product to its lookup code + description when known, so a counts row and a
+// movement row for the same item aggregate onto one line.
+function invKey(rawCode, desc){
+  const c = norm(rawCode);
+  const hit = c && IDXALL[c];
+  if(hit) return { key: norm(hit.it.code), code: hit.it.code, desc: hit.it.desc };
+  return { key: c || norm(desc), code: String(rawCode||''), desc: String(desc||rawCode||'') };
+}
+// Build { buildingName -> { productKey -> {code, desc, qty} } } across every product.
+function computeInventory(){
+  const inv = {};
+  const add = function(bldg, id, q){
+    if(!bldg || !id.key) return;
+    const B = inv[bldg] || (inv[bldg] = {});
+    const P = B[id.key] || (B[id.key] = { code:id.code, desc:id.desc, qty:0 });
+    P.qty += q;
+    if(!P.desc && id.desc) P.desc = id.desc;
+    if(!P.code && id.code) P.code = id.code;
+  };
+  // 1) counted baseline — newest count at each location, rolled up per building
+  ['metals','plastics'].forEach(function(dep){
+    const idx = LOGIDX[dep] || {};
+    Object.keys(idx).forEach(function(locKey){
+      (idx[locKey]||[]).forEach(function(r){
+        const q = Number(r.qty)||0; if(!q) return;
+        const pfx = parseLoc(r.loc).bldg; if(!pfx) return;
+        add(buildingForPrefix(pfx), invKey(r.product, r.desc), q);
+      });
+    });
+  });
+  // 2) stack movements — leaves the From building, joins the To building
+  (MOVES||[]).forEach(function(m){
+    if(m.voided) return;
+    const q = Number(m.qtyEach)||0; if(!q) return;
+    const id = invKey(m.barcode||m.product, m.desc);
+    add(m.fromBuilding, id, -q);
+    add(m.toBuilding, id, q);
+  });
+  return inv;
+}
+function renderInventory(){
+  const host=$('invBody'); if(!host) return;
+  const ready = (LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
+  if(!ready){ host.innerHTML='<div class="inv-empty">Loading live inventory…</div>'; const s=$('invSummary'); if(s) s.textContent='Loading…'; return; }
+  const q = norm($('invFilter') ? $('invFilter').value : '');
+  const inv = computeInventory();
+  const order = BUILDINGS.map(function(b){ return b.name; });
+  const names = Object.keys(inv).sort(function(a,b){
+    const ia=order.indexOf(a), ib=order.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    if(ia!==-1) return -1; if(ib!==-1) return 1;
+    return a<b?-1:(a>b?1:0);
+  });
+  let html='', gUnits=0, gLines=0, shownB=0;
+  names.forEach(function(name){
+    const bMatch = !q || norm(name).indexOf(q)!==-1;
+    const rows = Object.keys(inv[name]).map(function(k){ return inv[name][k]; })
+      .filter(function(p){ return p.qty>0 && (bMatch || norm(p.code).indexOf(q)!==-1 || norm(p.desc).indexOf(q)!==-1); })
+      .sort(function(a,b){ return b.qty - a.qty; });
+    if(!rows.length) return;
+    const total = rows.reduce(function(s,p){ return s+p.qty; }, 0);
+    gUnits += total; gLines += rows.length; shownB++;
+    const b = buildingByName(name);
+    html += '<div class="inv-b"><div class="inv-bh">'
+      + '<span class="inv-bn">'+esc(name)+(b&&b.production?'<span class="inv-prod">production</span>':'')+'</span>'
+      + '<span class="inv-bt">'+total.toLocaleString()+' units · '+rows.length+' item'+(rows.length===1?'':'s')+'</span></div>'
+      + '<div class="inv-rows">'
+      + rows.map(function(p){
+          return '<div class="inv-row"><span class="inv-p"><b>'+esc(p.code||p.desc||'?')+'</b>'
+            + (p.desc && p.desc!==p.code ? '<span class="inv-d">'+esc(p.desc)+'</span>' : '')
+            + '</span><span class="inv-q">'+p.qty.toLocaleString()+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  });
+  const s=$('invSummary');
+  if(s) s.textContent = gUnits.toLocaleString()+' units · '+gLines+' lines · '+shownB+' building'+(shownB===1?'':'s');
+  host.innerHTML = html || '<div class="inv-empty">'+(q?'No products match “'+esc(q)+'.”':'No live inventory yet — counts and moves will show up here.')+'</div>';
+}
+function refreshInventory(){
+  const btn=$('invRefresh'); if(btn){ btn.disabled=true; btn.textContent='…'; }
+  Promise.all([loadLogs(), loadMoves()]).then(function(){ renderInventory(); })
+    .catch(function(){ renderInventory(); })
+    .then(function(){ if(btn){ btn.disabled=false; btn.textContent='↻'; } });
+}
+/* Switch between the Move-stock screen and the Live-inventory screen. */
+function showView(v){
+  state.view = v;
+  const c=$('count'), inv=$('inventory');
+  if(c) c.hidden = (v==='inventory');
+  if(inv) inv.hidden = (v!=='inventory');
+  const tm=$('tabMove'), ti=$('tabInv');
+  if(tm) tm.classList.toggle('on', v!=='inventory');
+  if(ti) ti.classList.toggle('on', v==='inventory');
+  if(v==='inventory') renderInventory(); else focusScan();
 }
 // Compose the location from the building select + number box (also accepts typing "m03"/"mt12").
 function composeLoc(){
@@ -965,16 +1106,16 @@ var LOG_ON=true;   // "compare to last count" is always on
 function loadLogs(){
   return callApi('getLogs',[]).then(function(res){
     LOG.metals=(res&&res.metals)||[]; LOG.plastics=(res&&res.plastics)||[];
-    buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); renderFromTiles(); if(state.mode==='row') renderRowPanel();
-  }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; renderFromTiles(); if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
+    buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); renderFromTiles(); renderInventory(); if(state.mode==='row') renderRowPanel();
+  }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; renderFromTiles(); renderInventory(); if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
 }
 
 /* ---- movement ledger (read back so on-hand = counted baseline +/- movements) ---- */
 var MOVES=[], MOVES_LOADED=false, MOVES_ERR=false;
 function loadMoves(){
   return callApi('getMovements',[]).then(function(res){
-    MOVES = Array.isArray(res) ? res : []; MOVES_LOADED=true; MOVES_ERR=false; renderFromTiles();
-  }).catch(function(err){ MOVES_ERR=true; MOVES_LOADED=false; renderFromTiles(); console.warn('movements load failed',err); });
+    MOVES = Array.isArray(res) ? res : []; MOVES_LOADED=true; MOVES_ERR=false; renderFromTiles(); renderInventory();
+  }).catch(function(err){ MOVES_ERR=true; MOVES_LOADED=false; renderFromTiles(); renderInventory(); console.warn('movements load failed',err); });
 }
 // Split a total into full units/pallets + loose, using the item's per-pallet number.
 function unitsBreakdown(total, per){
