@@ -9,12 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#E9EAEC; --panel:#FBFBFC; --ink:#161A1F; --ink-soft:#5A626C; --line:#D2D6DB;
-  --metal:#2C3E50; --metal-accent:#E8A21A; --metal-soft:#EEF1F4;
-  --plastic:#0E7C6E; --plastic-accent:#12B3A0; --plastic-soft:#E4F3F1;
-  --danger:#C0392B; --ok:#2E7D48;
+  /* One standard palette — navy accent from the logo; no per-category color switching. */
+  --paper:#eef1f6; --panel:#ffffff; --ink:#131b2e; --ink-soft:#6b7280; --line:#dfe3ea;
+  --accent:#0f2350; --accent-dark:#0a1836; --accent-soft:#e5eaf3;
+  --metal:#0f2350; --metal-accent:#b45309; --metal-soft:#e5eaf3;
+  --plastic:#0f2350; --plastic-accent:#b45309; --plastic-soft:#e5eaf3;
+  --danger:#b23b3b; --ok:#0f7a3d;
   --radius:14px; --tap:60px;
-  --dept:#2C3E50; --dept-accent:#E8A21A; --dept-soft:#EEF1F4; --dept-ink:#fff;
+  --dept:#0f2350; --dept-accent:#b45309; --dept-soft:#e5eaf3; --dept-ink:#fff;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -581,7 +583,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v60-staged-inv';
+var APP_VERSION = 'v61-palette';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1176,16 +1178,21 @@ function logDateVal(s){
 }
 function buildLogIndex(){
   ['metals','plastics'].forEach(function(dep){
+    const rows = LOG[dep]||[];
+    // The most recent count is the truth: a full recount supersedes EVERYTHING older for that kind.
+    // We take the newest count date per kind (Ends / Cans / Plastics) and keep only rows on that
+    // date, so a location that only appears in an older count (e.g. a stale "R-###" spot) drops out
+    // instead of lingering forever. Undated rows are always kept.
+    const maxByKind={};
+    rows.forEach(function(r){ const kd=norm(r.kind), v=logDateVal(r.countDate); if(v>(maxByKind[kd]||0)) maxByKind[kd]=v; });
     const byLoc={};
-    (LOG[dep]||[]).forEach(function(r){ const k=logLocKey(r.loc); if(!k||k==='#')return; (byLoc[k]=byLoc[k]||[]).push(r); });
-    // At each location keep ONLY the most-recently-counted date (older counts are superseded).
-    const idx={};
-    Object.keys(byLoc).forEach(function(k){
-      const rows=byLoc[k];
-      let maxV=0; rows.forEach(function(r){ const v=logDateVal(r.countDate); if(v>maxV) maxV=v; });
-      idx[k]= maxV ? rows.filter(function(r){ return logDateVal(r.countDate)===maxV; }) : rows;
+    rows.forEach(function(r){
+      const kd=norm(r.kind), v=logDateVal(r.countDate);
+      if(v && v < (maxByKind[kd]||0)) return;            // older than this kind's latest count -> superseded
+      const k=logLocKey(r.loc); if(!k||k==='#') return;
+      (byLoc[k]=byLoc[k]||[]).push(r);
     });
-    LOGIDX[dep]=idx;
+    LOGIDX[dep]=byLoc;
   });
 }
 // Every logged product at a location, filtered to the active Ends/Cans kind for metals.
