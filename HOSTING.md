@@ -1,82 +1,68 @@
 # Hosting: GitHub Pages front end + Cloudflare Worker backend
 
 ```
-Browser (github.io page)  ──fetch {fn,args}──▶  Cloudflare Worker  ──▶  Google Sheet
-   docs/index.html                                worker.js              (service account)
+Browser (github.io page)  ──fetch {fn,args}──▶  Cloudflare Worker  ──▶  Google Sheets
+   docs/index.html                                worker.js          Movements (r/w) + lookups (read)
 ```
 
-- **GitHub Pages** serves the UI (`docs/index.html`) — a plain `*.github.io` URL, no custom
-  domain needed.
-- **Cloudflare Worker** (`worker.js`) is the backend: it reads/writes the Inventory spreadsheet
-  directly with a **Google service account** (no Apps Script). Self-contained — paste it into a
-  dashboard Worker, no build step.
-- Both **reads and writes** run on the Worker: `getLookups()` loads the three lookup tabs and
-  `appendEntry()` writes a counted row to the `Metals` / `Plastics` tabs — the same contract the
-  Apps Script backend used. The Apps Script version can stay as a fallback if you like.
+- **GitHub Pages** serves the UI (`docs/index.html`) — a plain `*.github.io` URL. `docs/.nojekyll`
+  keeps Pages from touching the files.
+- **Cloudflare Worker** (`worker.js`) is the backend. It **reads** the product master (the three
+  `*_Lookup` tabs, read-only) and the `Buildings` map, and **writes** one row per movement to the
+  Movements workbook, using a **Google service account** (no Apps Script). Self-contained — paste it
+  into a dashboard Worker, no build step.
 
-> Uses GitHub Pages, not Cloudflare Pages, for the front end.
-
----
-
-## Step 1 — Service account can reach the sheet
-1. Share the **Inventory** spreadsheet with the service account's email
-   (`…@…iam.gserviceaccount.com`, the `client_email` in the key JSON) — give it **Editor**
-   (Editor is required because the app writes counts back to the sheet).
-2. Google Cloud Console → the service account's project → **APIs & Services → Library →
+## Step 1 — Service account can reach the sheets
+1. Share the **Movements** workbook (`1xaXUqrRbr3C6yM10Tw9a0ctL2zjbrrNAFzn3ZPNr704`) with the service
+   account email (`…@…iam.gserviceaccount.com`) — **Editor** (the app writes movements here).
+2. Share the **Product master** workbook (`1GNw1gAnB1jI9L6PdUoUeQAlOKCHlPJ1f0-kxcQroI9U`) with the
+   same email — **Viewer** (read-only; the app never writes here).
+3. Google Cloud Console → the service account's project → **APIs & Services → Library →
    Google Sheets API → Enable**.
-3. Note the spreadsheet id — it's the long string in the sheet URL between `/d/` and `/edit`:
-   `https://docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`.
 
 ## Step 2 — Create the Cloudflare Worker
-1. Cloudflare → **Workers & Pages → Create → Create Worker** → name it e.g.
-   `inventory-count-api` → Deploy.
+1. Cloudflare → **Workers & Pages → Create → Create Worker** → name it e.g. `live-inventory` → Deploy.
 2. **Edit code** → delete the template → paste all of **`worker.js`** → **Deploy**.
 3. **Settings → Variables and Secrets → Add:**
-   - `GCP_SA_EMAIL` (Secret) = the service account email.
-   - `GCP_SA_PRIVATE_KEY` (Secret) = the `private_key` value from the key JSON (paste verbatim;
-     the `\n`s are fine).
-   - `SHEET_ID` (Variable, optional) — the Inventory workbook id is baked into `worker.js` as
-     the default, so you only need this if the workbook ever changes.
-   - `ALLOWED_ORIGIN` (optional) = `https://<youruser>.github.io` to lock CORS to your page.
+   - `GCP_SA_EMAIL` (Secret) = service account email.
+   - `GCP_SA_PRIVATE_KEY` (Secret) = the `private_key` from the key JSON (paste verbatim; `\n`s ok).
+   - `ALLOWED_ORIGIN` (Variable) = `https://jmarrujo-jpg.github.io` (locks CORS to your page).
    - `API_TOKEN` (optional Secret) = a long random string, if you want a shared-token gate.
+   - `MOVEMENTS_TAB` (optional Variable) = a sandbox tab name (e.g. `Movements_Sandbox`) while you're
+     testing. The Worker auto-creates the tab + header. Leave unset (or set `Movements`) for the real
+     tab. Delete this variable when you're ready to write live movements.
    - Deploy again after adding variables.
-4. Copy the Worker URL, e.g. `https://inventory-count-api.<subdomain>.workers.dev`.
-5. Test: open that URL in a browser → `{"ok":true,"service":"inventory-count-api","build":"v1"}`.
+4. Copy the Worker URL, e.g. `https://live-inventory.<subdomain>.workers.dev`.
+5. Test: open the URL → `{"ok":true,"service":"csc-live-inventory","build":"v1"}`.
 
 ## Step 3 — Point the front end at the Worker
-In `docs/index.html`, set near the top:
+In `docs/index.html`, near the top of the first `<script>`:
 ```js
-var API_URL = 'https://inventory-count-api.<subdomain>.workers.dev';  // your Worker URL
+var API_URL = 'https://live-inventory.<subdomain>.workers.dev';  // your Worker URL
 var API_SECRET = '';   // set only if you added API_TOKEN in Step 2
 ```
-Commit. (Or paste me the Worker URL and I'll set it and push.)
+Commit + push.
 
 ## Step 4 — Turn on GitHub Pages
 1. GitHub repo → **Settings → Pages**.
-2. **Source: Deploy from a branch** → Branch `claude/litho-scanner-app-y1zwfn`, Folder **`/docs`**
-   → Save. *(The repo root has `Index.HTML` with a capital I, which Pages won't serve as an
-   index — `/docs` has the correct lowercase `index.html`.)*
-3. Wait ~1 min → open the `https://<youruser>.github.io/inventory-scanner/` URL.
+2. **Source: Deploy from a branch** → Branch (your dev branch or `main` once merged), Folder **`/docs`**
+   → Save.
+3. Wait ~1 min → open the `https://jmarrujo-jpg.github.io/live-inventory/` URL.
 
 ## Step 5 — Verify
-- The landing screen shows **"N items loaded"** (the lookup tabs came through the Worker).
-- Pick a department, scan/type a code, enter a count, **Save entry** → a "Saved · N units" toast,
-  and a new row appears in the `Metals` or `Plastics` tab of the sheet.
+- The header subtitle shows **"N products · M buildings"** (bootstrap came through).
+- Scan/type a code → pick a qty → From → To → **Save move** → a "Saved · N units" toast, and a new
+  row appears in the movements tab. Moving *to* a Production building shows the **In Production** flag.
 
 ## Troubleshooting
-- App shows **"Service account not configured"** → the Worker secrets didn't save, or you didn't
-  redeploy after adding them.
-- **"Sheets API 403"** → the sheet isn't shared with the service account email, or the Sheets API
-  isn't enabled on its project.
-- **"Sheets API 400 … Unable to parse range"** → a tab name doesn't match. The Worker expects
-  `Ends_Lookup`, `Cans_Lookup`, `Plastics_Lookup`, `Metals`, `Plastics` (edit `TAB` in
-  `worker.js` if yours differ).
-- **Could not load item lists / CORS error in dev-tools** → `API_URL` in `docs/index.html`
-  doesn't match the Worker URL, or `ALLOWED_ORIGIN` doesn't match your github.io origin (or
-  leave it unset to allow all).
-- Page 404 "provide an index.html" → Pages Source is the repo root; switch it to **`/docs`**.
+- **"Service account not configured"** → Worker secrets didn't save, or you didn't redeploy.
+- **"Sheets API 403"** → a sheet isn't shared with the service account, or the Sheets API isn't enabled.
+- **"Sheets API 400 … Unable to parse range"** → a tab name doesn't match (`Ends_Lookup`, `Cans_Lookup`,
+  `Plastics_Lookup`, `Buildings`).
+- **Could not load / CORS error** → `API_URL` doesn't match the Worker URL, or `ALLOWED_ORIGIN` doesn't
+  match your github.io origin (or leave it unset to allow all).
 
 ## Security note
-With a plain github.io page, the optional `API_TOKEN` lives in the page source, so it only
-deters casual access. It's fine for an internal floor tool; if you later want a real login gate,
-we can move the page onto a Cloudflare-proxied domain and add Cloudflare Access (Google SSO).
+With a plain github.io page, the optional `API_TOKEN` lives in the page source, so it only deters
+casual access. Fine for an internal floor tool; for a real gate, move the page behind a
+Cloudflare-proxied domain + Cloudflare Access (Google SSO).
