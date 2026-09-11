@@ -377,6 +377,7 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .viewtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px 0}
 .viewtabs button{height:44px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-weight:800;font-size:14px;color:var(--ink-soft);cursor:pointer;transition:background .1s ease,color .1s ease,border-color .1s ease}
 .viewtabs button.on{background:var(--dept);border-color:var(--dept);color:#fff}
+.csc-logo{height:28px;width:auto;vertical-align:-7px;margin-right:8px;border-radius:4px}
 .topbtn{flex:0 0 auto;height:44px;min-width:44px;padding:0 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-size:20px;font-weight:800;color:var(--dept);cursor:pointer}
 .topbtn:active{transform:scale(.96)}
 /* live inventory list */
@@ -491,7 +492,7 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   <section id="inventory" hidden>
     <div class="topbar">
       <div class="title">
-        <div class="dpt">Live inventory</div>
+        <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> Live inventory</div>
         <div class="who" id="invSummary">Loading…</div>
       </div>
       <button type="button" class="topbtn" id="invRefresh" onclick="refreshInventory()" aria-label="Refresh">↻</button>
@@ -583,7 +584,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v61-palette';
+var APP_VERSION = 'v62-logo';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
