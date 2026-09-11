@@ -416,7 +416,7 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   <section id="count">
     <div class="topbar">
       <div class="title">
-        <div class="dpt" id="deptTitle">Metals</div>
+        <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> <span id="deptTitle">Live inventory</span></div>
         <div class="who">Counter: <input id="counterName" placeholder="your name" autocomplete="off"></div>
       </div>
       <div class="count-badge"><b id="sessCount">0</b><small>moves</small></div>
@@ -584,7 +584,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v62-logo';
+var APP_VERSION = 'v63-logo-both';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
