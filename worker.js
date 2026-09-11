@@ -123,7 +123,10 @@ export function buildMovementRow(m, now) {
   const entryMethod = String(m.entryMethod).toLowerCase() === 'pallets' ? 'Pallets' : 'Each';
   const qtyEntered = asNum(m.qtyEntered);
   const unitsPerPallet = m.unitsPerPallet === '' || m.unitsPerPallet == null ? '' : asNum(m.unitsPerPallet);
-  const qtyEach = computeQtyEach(entryMethod, qtyEntered, unitsPerPallet);
+  // Honor an explicit client total (pallets x per + loose extras); otherwise compute it.
+  const qtyEach = (m.qtyEach !== '' && m.qtyEach != null && !isNaN(Number(m.qtyEach)))
+    ? Math.round(Number(m.qtyEach))
+    : computeQtyEach(entryMethod, qtyEntered, unitsPerPallet);
   const flags = isProductionBuilding(m.toBuilding) ? 'In Production' : str_(m.flags);
   const movementId = str_(m.movementId) || genMovementId(when);
   return [
