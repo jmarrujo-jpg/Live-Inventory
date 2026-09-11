@@ -139,6 +139,25 @@ input,select{font-family:inherit;font-size:16px}
 .biginput input,.locrow input{flex:1;min-width:0}
 .locrow select{flex:0 0 108px;border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:0 8px;font-size:15px;color:var(--ink);height:52px}
 .locrow select:focus{border-color:var(--dept);outline:none}
+/* clean card dropdowns (To building) — native select restyled with a chevron */
+.fld select{-webkit-appearance:none;appearance:none;height:52px;width:100%;border:1.5px solid var(--line);border-radius:10px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;
+  padding:0 42px 0 14px;font-size:16px;font-weight:700;color:var(--dept);outline:none}
+.fld select:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+/* From-building tiles — only buildings holding this product, plus its Production point */
+.frombox label{margin-bottom:2px}
+.fromhelp{font-weight:600;color:var(--ink-soft);text-transform:none;letter-spacing:0}
+.frombldgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.frombtn{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:10px 12px;border:1.5px solid var(--line);
+  border-radius:12px;background:#fff;cursor:pointer;transition:transform .06s ease,border-color .1s ease,box-shadow .1s ease}
+.frombtn:active{transform:scale(.97)}
+.frombtn .fb-name{font-weight:800;font-size:15px;color:var(--ink);line-height:1.1}
+.frombtn .fb-sub{font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.01em}
+.frombtn.on{border-color:var(--dept);background:var(--dept-soft);box-shadow:0 0 0 3px var(--dept-soft)}
+.frombtn.on .fb-name{color:var(--dept)}
+.frombtn.prod{border-style:dashed}
+.frombtn.prod .fb-sub{color:#B26A00}
+.fromnote{font-size:12px;color:var(--ink-soft);margin-top:8px}
 .stepbtn{flex:0 0 58px;border-radius:10px;background:var(--dept);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center;cursor:pointer}
 .stepbtn:active{filter:brightness(.92)}
 .stepbtn.ok{background:var(--ok)}
@@ -510,7 +529,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v55-onescan';
+var APP_VERSION = 'v56-fromtiles';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -545,6 +564,81 @@ function buildingNameOptions(sel){
 function buildingByName(n){ return BUILDINGS.find(function(b){ return b.name===n; }); }
 /* Card "To building" changed: show the "In Production" note when the destination is a production env. */
 function onCardTo(v){ const el=$('prodHint'); if(el){ const b=buildingByName(v); el.hidden = !(b && b.production); } }
+
+/* ---- From-building tiles: only buildings the counts log shows holding this product ---- */
+function currentKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='cans'?'cans':'ends'); }
+// Buildings currently holding this product, from the counts master log — newest count at each
+// location (older counts are superseded by buildLogIndex). Location prefix -> building via the
+// Buildings tab's Location Prefix. Returns [{name, qty, production}] highest on-hand first.
+function buildingsWithStock(item, key){
+  const dep = key==='plastics' ? 'plastics' : 'metals';
+  const kindWant = key==='cans' ? 'Cans' : (key==='ends' ? 'Ends' : '');
+  const code = norm(item.code), desc = norm(item.desc);
+  const byPfx = {};
+  const idx = LOGIDX[dep] || {};
+  Object.keys(idx).forEach(function(locKey){
+    (idx[locKey]||[]).forEach(function(r){
+      if(dep==='metals' && kindWant && r.kind && norm(r.kind)!==norm(kindWant)) return;
+      const mine = (code && norm(r.product)===code) || (desc && norm(r.desc)===desc);
+      if(!mine) return;
+      const q = Number(r.qty)||0; if(q<=0) return;
+      const pfx = parseLoc(r.loc).bldg; if(!pfx) return;
+      byPfx[pfx] = (byPfx[pfx]||0) + q;
+    });
+  });
+  const out = [];
+  Object.keys(byPfx).forEach(function(pfx){
+    const b = BUILDINGS.find(function(x){ return x.prefix && norm(x.prefix)===norm(pfx); });
+    out.push({ name: b?b.name:pfx, qty: byPfx[pfx], production: b?b.production:false });
+  });
+  out.sort(function(a,b){ return b.qty - a.qty; });
+  return out;
+}
+// The Production building that matches the product's category (a creation point — always offered).
+function productionBuildingFor(key){
+  const wantPlastic = (key==='plastics');
+  return BUILDINGS.find(function(b){
+    if(!b.production) return false;
+    const n = norm(b.name);
+    return wantPlastic ? n.indexOf('PLASTIC')!==-1 : n.indexOf('METAL')!==-1;
+  }) || null;
+}
+var _fromOpts = [];
+// Render the From tiles for the open card. Called on card open and again when the log finishes loading.
+function renderFromTiles(){
+  const box=$('fromTiles'); if(!box) return;
+  if(!state.current){ box.innerHTML=''; _fromOpts=[]; return; }
+  const key=currentKey();
+  const prod=productionBuildingFor(key);
+  const stock = LOG_LOADED ? buildingsWithStock(state.current, key) : [];
+  let opts, note='';
+  if(LOG_LOADED && stock.length){
+    opts = stock.slice();
+    if(prod && !opts.some(function(o){ return o.name===prod.name; })) opts.push({name:prod.name, qty:null, production:true});
+  } else {
+    // No counted stock (or log still loading) — let them pick any building; Production stays offered.
+    note = !LOG_LOADED ? 'Loading on-hand stock…'
+         : (LOG_ERR ? 'Stock list unavailable — pick where it’s moving from.'
+                    : 'No counted stock for this item — pick where it’s moving from.');
+    opts = BUILDINGS.filter(function(b){ return !b.production; }).map(function(b){ return {name:b.name, qty:null, production:false}; });
+    if(prod) opts.push({name:prod.name, qty:null, production:true});
+  }
+  if(!state.building && opts.length===1) state.building=opts[0].name;   // one obvious source → pre-pick it
+  _fromOpts=opts;
+  box.innerHTML=opts.map(function(o,i){
+    const on = o.name===state.building ? ' on' : '';
+    const sub = o.production ? 'Production · add stock' : (o.qty!=null ? o.qty.toLocaleString()+' on hand' : 'no count');
+    return '<button type="button" class="frombtn'+(o.production?' prod':'')+on+'" onclick="pickFrom('+i+')">'
+      + '<span class="fb-name">'+esc(o.name)+'</span><span class="fb-sub">'+esc(sub)+'</span></button>';
+  }).join('');
+  const n=$('fromNote'); if(n){ n.textContent=note; n.hidden=!note; }
+}
+function pickFrom(i){
+  const o=_fromOpts[i]; if(!o) return;
+  state.building=o.name; persistSession();
+  const tb=$('topBldg'); if(tb) tb.value=o.name;   // keep the (hidden) top select in sync
+  renderFromTiles();
+}
 // Compose the location from the building select + number box (also accepts typing "m03"/"mt12").
 function composeLoc(){
   const sel = $('f_bldg') ? $('f_bldg').value : '';
@@ -840,8 +934,8 @@ var LOG_ON=true;   // "compare to last count" is always on
 function loadLogs(){
   return callApi('getLogs',[]).then(function(res){
     LOG.metals=(res&&res.metals)||[]; LOG.plastics=(res&&res.plastics)||[];
-    buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); if(state.mode==='row') renderRowPanel();
-  }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
+    buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); renderFromTiles(); if(state.mode==='row') renderRowPanel();
+  }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; renderFromTiles(); if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
 }
 // Split a total into full units/pallets + loose, using the item's per-pallet number.
 function unitsBreakdown(total, per){
@@ -952,7 +1046,7 @@ function syncMode(){
   const m=state.mode||'scan';
   const ms=$('modeScan'), mr=$('modeRow'); if(ms) ms.classList.toggle('on',m==='scan'); if(mr) mr.classList.toggle('on',m==='row');
   const sb=$('scanbay'); if(sb) sb.style.display=m==='scan'?'':'none';
-  const bb=$('bldgBar'); if(bb) bb.style.display=m==='scan'?'':'none';
+  const bb=$('bldgBar'); if(bb) bb.style.display='none';   // From is chosen per-product on the card now
   const rp=$('rowPanel'); if(rp) rp.classList.toggle('hide', m!=='row');
   if(m==='row'){ fillRowBuildings(); renderRowPanel(); }
 }
@@ -1205,6 +1299,7 @@ function selectItem(it, edit){
   state.editIndex = edit ? edit.index : null;
   if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.add('hide'); }   // focus on the card while editing
   const ed = state.editIndex!=null ? (activeEntries()[state.editIndex]||null) : null;
+  if(!ed){ state.building=''; } else if(ed.from){ state.building=ed.from; }   // From tiles start fresh on a new scan
   const dept=state.dept, kind=state.metalKind;
   const isPlastic=dept==='plastic'||dept==='plastics';
   const perLabel = dept==='plastics' ? 'Per Pallet / Box' : 'Per Pallet';
@@ -1244,6 +1339,9 @@ function selectItem(it, edit){
     </div>
     <div class="card-body">
       <div class="grid">
+        <div class="fld full frombox"><label>From building <span class="fromhelp">where it's moving from</span></label>
+          <div id="fromTiles" class="frombldgs"></div>
+          <div id="fromNote" class="fromnote" hidden></div></div>
         <div class="fld full"><label>${codeLabel}</label><input id="f_code" class="mono" value="${esc(it.code||'')}"></div>
         <div class="fld full"><label>Description</label><input id="f_desc" inputmode="none" readonly value="${esc(it.desc)}" onfocus="tkBind('f_desc')" onblur="tkOnBlur()"></div>
         ${extraFields}
@@ -1258,7 +1356,7 @@ function selectItem(it, edit){
             <input id="f_extra" class="big" inputmode="none" readonly enterkeyhint="next" value="${vExtra}" oninput="calc()" onfocus="this.select();lastCountField='f_extra';kpBind('f_extra')" onblur="kpOnBlur()" onkeydown="cardEnter(event,'f_loc')">
           </div></div>
 
-        <div class="fld full"><label>To building</label>
+        <div class="fld full"><label>To building <span class="fromhelp">where it's going</span></label>
           <select id="f_to" onchange="onCardTo(this.value)">${toOpts}</select></div>
 
         <div class="fld full loghint" id="prodHint" hidden>↻ Will be flagged <b style="color:#B26A00">In Production</b></div>
@@ -1273,6 +1371,7 @@ function selectItem(it, edit){
     </div>
    </div>`;
   calc();
+  renderFromTiles();   // stock-filtered From buildings + this product's Production point
   // Where to land first: manual add starts at Description; an item with no Per Pallet quantity
   // starts there so you fill it in; otherwise the Full box (perUnit already known).
   setTimeout(()=>{
@@ -1469,7 +1568,7 @@ async function saveEntry(){
   const from=state.building||'';
   const to=($('f_to')?.value)||'';
   if(total<=0){ toast('Enter a quantity greater than 0','err'); _saving=false; return; }
-  if(!from){ toast('Pick the From building (top of screen)','err'); _saving=false; return; }
+  if(!from){ toast('Pick the From building (tap a tile)','err'); _saving=false; return; }
   if(!to){ toast('Pick a To building','err'); _saving=false; return; }
   if(from===to){ toast('From and To must differ','err'); _saving=false; return; }
   const counter=$('counterName').value.trim()||'-';
@@ -1579,8 +1678,9 @@ function onDataFail(err){
 }
 Promise.all([callApi('getLookups',[]), callApi('getBuildings',[])]).then(function(r){
   BUILDINGS = r[1]||[];
-  initBuildingSelect();     // populate the "From building" dropdown from the Buildings tab
+  initBuildingSelect();     // populate the (hidden) building dropdown from the Buildings tab
   onData(r[0]);
+  loadLogs();               // counts master log -> which buildings hold each product (From tiles)
 }).catch(onDataFail);
 
 /* ---- toast ---- */
