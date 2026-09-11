@@ -25,6 +25,11 @@ body{
 }
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
 .hide{display:none!important}
+[hidden]{display:none!important}   /* keep the `hidden` attribute reliable even on flex/grid rows */
+/* Yes/No segmented control (e.g. "Staged for shipping?") */
+.yesno{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.yesno button{height:50px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:800;font-size:15px;color:var(--ink-soft);cursor:pointer;transition:border-color .1s ease,background .1s ease,color .1s ease}
+.yesno button.on{border-color:var(--dept);background:var(--dept-soft);color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select{font-family:inherit;font-size:16px}
 
@@ -529,7 +534,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v57-perbuilding';
+var APP_VERSION = 'v58-staged';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -550,7 +555,7 @@ var DATA = {ends:[],cans:[],plastics:[]};
 </script>
 <script>
 /* ====== APP LOGIC ====== */
-const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan' };
+const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false };
 var rowSkips = {};   // per-location products the user marked "not here" in Count-by-Row (transient)
 
 /* Buildings loaded live from the Movements workbook's Buildings tab: {name, prefix, production}.
@@ -564,6 +569,12 @@ function buildingNameOptions(sel){
 function buildingByName(n){ return BUILDINGS.find(function(b){ return b.name===n; }); }
 /* Card "To building" changed: show the "In Production" note when the destination is a production env. */
 function onCardTo(v){ const el=$('prodHint'); if(el){ const b=buildingByName(v); el.hidden = !(b && b.production); } }
+/* "Staged for shipping?" Yes/No — Yes adds a "Staged for Shipment" flag to the movement. */
+function setStaged(v){
+  state.staged = !!v;
+  const y=$('stagedYes'), n=$('stagedNo'); if(y) y.classList.toggle('on', state.staged); if(n) n.classList.toggle('on', !state.staged);
+  const h=$('stagedHint'); if(h) h.hidden = !state.staged;
+}
 
 /* ---- From-building tiles: only buildings the counts log shows holding this product ---- */
 function currentKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='cans'?'cans':'ends'); }
@@ -1328,6 +1339,7 @@ function selectItem(it, edit){
   if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.add('hide'); }   // focus on the card while editing
   const ed = state.editIndex!=null ? (activeEntries()[state.editIndex]||null) : null;
   if(!ed){ state.building=''; } else if(ed.from){ state.building=ed.from; }   // From tiles start fresh on a new scan
+  state.staged = ed ? /staged/i.test(ed.flags||'') : false;                   // reset the staged toggle per card
   const dept=state.dept, kind=state.metalKind;
   const isPlastic=dept==='plastic'||dept==='plastics';
   const perLabel = dept==='plastics' ? 'Per Pallet / Box' : 'Per Pallet';
@@ -1388,6 +1400,13 @@ function selectItem(it, edit){
           <select id="f_to" onchange="onCardTo(this.value)">${toOpts}</select></div>
 
         <div class="fld full loghint" id="prodHint" hidden>↻ Will be flagged <b style="color:#B26A00">In Production</b></div>
+
+        <div class="fld full"><label>Is this product staged for shipping?</label>
+          <div class="yesno" id="stagedSeg">
+            <button type="button" id="stagedNo" class="${state.staged?'':'on'}" onclick="setStaged(false)">No</button>
+            <button type="button" id="stagedYes" class="${state.staged?'on':''}" onclick="setStaged(true)">Yes</button>
+          </div></div>
+        <div class="fld full loghint" id="stagedHint"${state.staged?'':' hidden'}>📦 Will be marked <b style="color:#1b6fb3">Staged for Shipment</b></div>
 
         <div class="total-strip"><span class="lbl">Total units to move</span>
           <span class="val"><span id="totalVal">0</span><small>units</small></span></div>
@@ -1610,7 +1629,7 @@ async function saveEntry(){
   if(weight) noteBits.push('Wt '+weight);
   const movement={ user:counter, barcode:code, product:code||desc, desc:desc, kind:category,
     entryMethod:'Pallets', qtyEntered:full, unitsPerPallet:per, qtyEach:total,
-    fromBuilding:from, toBuilding:to, note:noteBits.join(' | '),
+    fromBuilding:from, toBuilding:to, staged:!!state.staged, note:noteBits.join(' | '),
     eventDate:new Date().toISOString().slice(0,10) };
   const btn=$('f_save'); const btnLabel=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='Saving...'; }

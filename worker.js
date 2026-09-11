@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v12-perbuilding' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v13-staged' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -174,7 +174,12 @@ async function logMovement(env, m) {
   const qtyEach = (m.qtyEach !== '' && m.qtyEach != null && !isNaN(Number(m.qtyEach)))
     ? Math.round(Number(m.qtyEach))
     : (entryMethod === 'Pallets' ? Math.round((Number(qEntered) || 0) * (Number(perPallet) || 0)) : Math.round(Number(qEntered) || 0));
-  const flags = isProductionBuilding(m.toBuilding) ? 'In Production' : str_(m.flags);
+  const staged = (m.staged === true || String(m.staged).trim().toUpperCase() === 'TRUE');
+  const flagList = [];
+  if (isProductionBuilding(m.toBuilding)) flagList.push('In Production');
+  if (staged) flagList.push('Staged for Shipment');
+  if (str_(m.flags)) flagList.push(str_(m.flags));
+  const flags = flagList.join(' | ');
   const id = str_(m.movementId) || ('MV-' + when.getTime().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase());
   const row = [
     id, loggedAt, str_(m.eventDate) || loggedAt.slice(0, 10), str_(m.user), str_(m.barcode),
