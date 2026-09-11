@@ -32,6 +32,13 @@ body{
 .yesno{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .yesno button{height:50px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:800;font-size:15px;color:var(--ink-soft);cursor:pointer;transition:border-color .1s ease,background .1s ease,color .1s ease}
 .yesno button.on{border-color:var(--dept);background:var(--dept-soft);color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+/* Guided card stepper — each step reveals after the previous is answered */
+.step{grid-column:1/-1;margin-top:4px}
+.qtyrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.steplbl{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;margin:2px 0 9px}
+.steplbl .fromhelp{margin-left:2px}
+.stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--dept);color:#fff;font-size:12px;font-weight:800;flex:0 0 auto}
+.stepnext{width:100%;height:52px;margin-top:12px}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select{font-family:inherit;font-size:16px}
 
@@ -584,7 +591,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v63-logo-both';
+var APP_VERSION = 'v64-stepper';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -618,12 +625,16 @@ function buildingNameOptions(sel){
 }
 function buildingByName(n){ return BUILDINGS.find(function(b){ return b.name===n; }); }
 /* Card "To building" changed: show the "In Production" note when the destination is a production env. */
-function onCardTo(v){ const el=$('prodHint'); if(el){ const b=buildingByName(v); el.hidden = !(b && b.production); } }
+function onCardTo(v){
+  const el=$('prodHint'); if(el){ const b=buildingByName(v); el.hidden = !(b && b.production); }
+  if(v){ revealStep(4); scrollStepIntoView(4); }   // To picked -> reveal the staged question
+}
 /* "Staged for shipping?" Yes/No — Yes adds a "Staged for Shipment" flag to the movement. */
 function setStaged(v){
   state.staged = !!v;
   const y=$('stagedYes'), n=$('stagedNo'); if(y) y.classList.toggle('on', state.staged); if(n) n.classList.toggle('on', !state.staged);
   const h=$('stagedHint'); if(h) h.hidden = !state.staged;
+  revealStep(5); scrollStepIntoView(5);   // answered -> reveal Save
 }
 
 /* ---- From-building tiles: only buildings the counts log shows holding this product ---- */
@@ -719,6 +730,13 @@ function pickFrom(i){
   state.building=o.name; persistSession();
   const tb=$('topBldg'); if(tb) tb.value=o.name;   // keep the (hidden) top select in sync
   renderFromTiles();
+  // advance to the quantity step and land on the right box (Per if unknown, else Full)
+  revealStep(2);
+  setTimeout(function(){
+    const needPer = !String(($('f_per')&&$('f_per').value)||'').trim();
+    const f = needPer ? $('f_per') : $('f_full');
+    if(f){ f.focus(); if(f.select) f.select(); }
+  }, 80);
 }
 
 /* ---- live inventory per building (counts baseline + stacked movements, all products) ---- */
@@ -1566,55 +1584,83 @@ function selectItem(it, edit){
     </div>
     <div class="card-body">
       <div class="grid">
-        <div class="fld full frombox"><label>From building <span class="fromhelp">where it's moving from</span></label>
-          <div id="fromTiles" class="frombldgs"></div>
-          <div id="fromNote" class="fromnote" hidden></div></div>
         <div class="fld full"><label>${codeLabel}</label><input id="f_code" class="mono" value="${esc(it.code||'')}"></div>
         <div class="fld full"><label>Description</label><input id="f_desc" inputmode="none" readonly value="${esc(it.desc)}" onfocus="tkBind('f_desc')" onblur="tkOnBlur()"></div>
         ${extraFields}
-        <div class="fld full"><label>${perLabel}</label><input id="f_per" class="mono" inputmode="none" readonly value="${it.perUnit??''}" oninput="calc()" onfocus="this.select();kpBind('f_per')" onblur="kpOnBlur()"></div>
 
-        <div class="fld"><label>Full ${dept==='plastics'?'(pallets/boxes)':'(boxes)'}</label>
-          <div class="biginput">
-            <input id="f_full" class="big" inputmode="none" readonly enterkeyhint="next" value="${vFull}" oninput="calc()" onfocus="this.select();lastCountField='f_full';kpBind('f_full')" onblur="kpOnBlur()" onkeydown="cardEnter(event,'f_extra')">
-          </div></div>
-        <div class="fld"><label>Extra (loose)</label>
-          <div class="biginput">
-            <input id="f_extra" class="big" inputmode="none" readonly enterkeyhint="next" value="${vExtra}" oninput="calc()" onfocus="this.select();lastCountField='f_extra';kpBind('f_extra')" onblur="kpOnBlur()" onkeydown="cardEnter(event,'f_loc')">
-          </div></div>
+        <div class="step frombox" data-step="1">
+          <div class="steplbl"><span class="stepnum">1</span> From building <span class="fromhelp">where it's moving from</span></div>
+          <div id="fromTiles" class="frombldgs"></div>
+          <div id="fromNote" class="fromnote" hidden></div>
+        </div>
 
-        <div class="fld full"><label>To building <span class="fromhelp">where it's going</span></label>
-          <select id="f_to" onchange="onCardTo(this.value)">${toOpts}</select></div>
+        <div class="step" data-step="2" hidden>
+          <div class="steplbl"><span class="stepnum">2</span> Quantity to move</div>
+          <div class="fld full"><label>${perLabel}</label><input id="f_per" class="mono" inputmode="none" readonly value="${it.perUnit??''}" oninput="calc()" onfocus="this.select();kpBind('f_per')" onblur="kpOnBlur()"></div>
+          <div class="qtyrow">
+            <div class="fld"><label>Full ${dept==='plastics'?'(pallets/boxes)':'(boxes)'}</label>
+              <div class="biginput">
+                <input id="f_full" class="big" inputmode="none" readonly enterkeyhint="next" value="${vFull}" oninput="calc()" onfocus="this.select();lastCountField='f_full';kpBind('f_full')" onblur="kpOnBlur()" onkeydown="cardEnter(event,'f_extra')">
+              </div></div>
+            <div class="fld"><label>Extra (loose)</label>
+              <div class="biginput">
+                <input id="f_extra" class="big" inputmode="none" readonly enterkeyhint="done" value="${vExtra}" oninput="calc()" onfocus="this.select();lastCountField='f_extra';kpBind('f_extra')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();qtyNext();}">
+              </div></div>
+          </div>
+          <div class="total-strip"><span class="lbl">Total units to move</span>
+            <span class="val"><span id="totalVal">0</span><small>units</small></span></div>
+          <button type="button" class="btn primary stepnext" onclick="qtyNext()">Next \u2192 To building</button>
+        </div>
 
-        <div class="fld full loghint" id="prodHint" hidden>↻ Will be flagged <b style="color:#B26A00">In Production</b></div>
+        <div class="step" data-step="3" hidden>
+          <div class="steplbl"><span class="stepnum">3</span> To building <span class="fromhelp">where it's going</span></div>
+          <div class="fld full"><select id="f_to" onchange="onCardTo(this.value)">${toOpts}</select></div>
+          <div class="fld full loghint" id="prodHint" hidden>\u21bb Will be flagged <b style="color:#B26A00">In Production</b></div>
+        </div>
 
-        <div class="fld full"><label>Is this product staged for shipping?</label>
+        <div class="step" data-step="4" hidden>
+          <div class="steplbl"><span class="stepnum">4</span> Staged for shipping?</div>
           <div class="yesno" id="stagedSeg">
             <button type="button" id="stagedNo" class="${state.staged?'':'on'}" onclick="setStaged(false)">No</button>
             <button type="button" id="stagedYes" class="${state.staged?'on':''}" onclick="setStaged(true)">Yes</button>
-          </div></div>
-        <div class="fld full loghint" id="stagedHint"${state.staged?'':' hidden'}>📦 Will be marked <b style="color:#1b6fb3">Staged for Shipment</b></div>
-
-        <div class="total-strip"><span class="lbl">Total units to move</span>
-          <span class="val"><span id="totalVal">0</span><small>units</small></span></div>
+          </div>
+          <div class="fld full loghint" id="stagedHint"${state.staged?'':' hidden'} style="margin-top:10px">\ud83d\udce6 Will be marked <b style="color:#1b6fb3">Staged for Shipment</b></div>
+        </div>
       </div>
     </div>
-    <div class="actions">
+    <div class="actions step" data-step="5" hidden>
       <button class="btn ghost" onclick="clearCard()">Cancel</button>
-      <button class="btn primary" id="f_save" onclick="saveEntry()">${ed?'✓ Update':'✓ Save entry'}</button>
+      <button class="btn primary" id="f_save" onclick="saveEntry()">${ed?'\u2713 Update':'\u2713 Save move'}</button>
     </div>
    </div>`;
   calc();
   renderFromTiles();   // stock-filtered From buildings + this product's Production point
-  // Where to land first: manual add starts at Description; an item with no Per Pallet quantity
-  // starts there so you fill it in; otherwise the Full box (perUnit already known).
+  // Guided flow: a new scan starts on step 1 (From) and each step reveals the next as it's
+  // answered. Editing an existing entry reveals everything so any field can be changed.
+  if(ed){ revealStep(5); }
+  else { revealStep(1); }
   setTimeout(()=>{
-    let startId='f_full';
-    if(it.__manual) startId = $('f_desc') ? 'f_desc' : 'f_per';
-    else if(!ed && !String(it.perUnit==null?'':it.perUnit).trim()) startId='f_per';
-    const f=$(startId);
-    if(f){ f.focus(); if(f.select) f.select(); }   // the onfocus handler shows the pad + scrolls
+    if(it.__manual && $('f_desc')){ $('f_desc').focus(); }   // manual add: fill the description first
+    else { const c=$('cardMount'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
   },80);
+}
+// ---- guided stepper: reveal steps 1..n, jump the newest into view ----
+function revealStep(n){
+  const host=$('cardMount'); if(!host) return;
+  host.querySelectorAll('[data-step]').forEach(function(el){ if(Number(el.getAttribute('data-step'))<=n) el.hidden=false; });
+}
+function scrollStepIntoView(n){
+  const host=$('cardMount'); if(!host) return;
+  const t=host.querySelector('[data-step="'+n+'"]');
+  if(t) setTimeout(function(){ t.scrollIntoView({behavior:'smooth',block:'center'}); }, 70);
+}
+// Step 2 -> 3: require a quantity before moving on to the To building.
+function qtyNext(){
+  const per=asNum($('f_per')&&$('f_per').value), full=asNum($('f_full')&&$('f_full').value), extra=asNum($('f_extra')&&$('f_extra').value);
+  const total=Math.round(full*per+extra);
+  if(total<=0){ toast('Enter a quantity greater than 0','err'); const f=$('f_full'); if(f){ f.focus(); if(f.select) f.select(); } return; }
+  kpHide();
+  revealStep(3); scrollStepIntoView(3);
 }
 function calc(){
   if(!$('f_per')) return;
