@@ -591,7 +591,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v64-stepper';
+var APP_VERSION = 'v65-totiles';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -612,7 +612,7 @@ var DATA = {ends:[],cans:[],plastics:[]};
 </script>
 <script>
 /* ====== APP LOGIC ====== */
-const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false, view:'move' };
+const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false, view:'move', to:'' };
 var rowSkips = {};   // per-location products the user marked "not here" in Count-by-Row (transient)
 
 /* Buildings loaded live from the Movements workbook's Buildings tab: {name, prefix, production}.
@@ -625,9 +625,26 @@ function buildingNameOptions(sel){
 }
 function buildingByName(n){ return BUILDINGS.find(function(b){ return b.name===n; }); }
 /* Card "To building" changed: show the "In Production" note when the destination is a production env. */
-function onCardTo(v){
-  const el=$('prodHint'); if(el){ const b=buildingByName(v); el.hidden = !(b && b.production); }
-  if(v){ revealStep(4); scrollStepIntoView(4); }   // To picked -> reveal the staged question
+// ---- To building: tiles (all buildings, minus the one we're moving FROM) ----
+var _toOpts=[];
+function renderToTiles(){
+  const box=$('toTiles'); if(!box) return;
+  const opts = BUILDINGS.filter(function(b){ return b.name!==state.building; })
+    .map(function(b){ return {name:b.name, production:b.production}; });
+  _toOpts=opts;
+  box.innerHTML = opts.map(function(o,i){
+    const on = o.name===state.to ? ' on' : '';
+    const sub = o.production ? 'Production · flags In Production' : 'move here';
+    return '<button type="button" class="frombtn'+(o.production?' prod':'')+on+'" onclick="pickTo('+i+')">'
+      + '<span class="fb-name">'+esc(o.name)+'</span><span class="fb-sub">'+esc(sub)+'</span></button>';
+  }).join('');
+}
+function pickTo(i){
+  const o=_toOpts[i]; if(!o) return;
+  state.to=o.name;
+  const el=$('prodHint'); if(el){ const b=buildingByName(o.name); el.hidden = !(b && b.production); }
+  renderToTiles();
+  revealStep(4); scrollStepIntoView(4);   // To picked -> reveal the staged question
 }
 /* "Staged for shipping?" Yes/No — Yes adds a "Staged for Shipment" flag to the movement. */
 function setStaged(v){
@@ -729,7 +746,9 @@ function pickFrom(i){
   const o=_fromOpts[i]; if(!o) return;
   state.building=o.name; persistSession();
   const tb=$('topBldg'); if(tb) tb.value=o.name;   // keep the (hidden) top select in sync
+  if(state.to===state.building){ state.to=''; }    // can't move to the same building we're leaving
   renderFromTiles();
+  renderToTiles();                                 // From changed -> drop it from the To options
   // advance to the quantity step and land on the right box (Per if unknown, else Full)
   revealStep(2);
   setTimeout(function(){
@@ -1544,6 +1563,7 @@ function selectItem(it, edit){
   if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.add('hide'); }   // focus on the card while editing
   const ed = state.editIndex!=null ? (activeEntries()[state.editIndex]||null) : null;
   if(!ed){ state.building=''; } else if(ed.from){ state.building=ed.from; }   // From tiles start fresh on a new scan
+  state.to = ed ? (ed.to||'') : '';                                           // To tiles start unpicked on a new scan
   state.staged = ed ? /staged/i.test(ed.flags||'') : false;                   // reset the staged toggle per card
   const dept=state.dept, kind=state.metalKind;
   const isPlastic=dept==='plastic'||dept==='plastics';
@@ -1614,8 +1634,8 @@ function selectItem(it, edit){
 
         <div class="step" data-step="3" hidden>
           <div class="steplbl"><span class="stepnum">3</span> To building <span class="fromhelp">where it's going</span></div>
-          <div class="fld full"><select id="f_to" onchange="onCardTo(this.value)">${toOpts}</select></div>
-          <div class="fld full loghint" id="prodHint" hidden>\u21bb Will be flagged <b style="color:#B26A00">In Production</b></div>
+          <div id="toTiles" class="frombldgs"></div>
+          <div class="fld full loghint" id="prodHint" hidden style="margin-top:10px">\u21bb Will be flagged <b style="color:#B26A00">In Production</b></div>
         </div>
 
         <div class="step" data-step="4" hidden>
@@ -1635,6 +1655,7 @@ function selectItem(it, edit){
    </div>`;
   calc();
   renderFromTiles();   // stock-filtered From buildings + this product's Production point
+  renderToTiles();     // destination buildings as tiles too
   // Guided flow: a new scan starts on step 1 (From) and each step reveals the next as it's
   // answered. Editing an existing entry reveals everything so any field can be changed.
   if(ed){ revealStep(5); }
@@ -1846,7 +1867,7 @@ async function saveEntry(){
   const per=asNum($('f_per').value), full=asNum($('f_full').value), extra=asNum($('f_extra').value);
   const total=Math.round(full*per+extra);
   const from=state.building||'';
-  const to=($('f_to')?.value)||'';
+  const to=state.to||'';
   if(total<=0){ toast('Enter a quantity greater than 0','err'); _saving=false; return; }
   if(!from){ toast('Pick the From building (tap a tile)','err'); _saving=false; return; }
   if(!to){ toast('Pick a To building','err'); _saving=false; return; }
