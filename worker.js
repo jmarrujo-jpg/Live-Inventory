@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v11-onescan' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v12-perbuilding' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -74,6 +74,7 @@ async function handle(fn, args, env) {
   args = args || [];
   if (fn === 'getLogs') return getLogs(env);          // reads a SEPARATE, read-only workbook
   if (fn === 'getBuildings') return getBuildings(env); // reads the Movements workbook's Buildings tab
+  if (fn === 'getMovements') return getMovements(env); // reads back the Movements log (per-building deltas)
   if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
   const sheets = await makeSheets(env);
   switch (fn) {
@@ -183,6 +184,35 @@ async function logMovement(env, m) {
   ];
   await sheets.appendEnsuring(MOVEMENTS_TAB, row, MOVEMENTS_HEADER);
   return { movementId: id, loggedAt: loggedAt, qtyEach: qtyEach, flags: flags };
+}
+
+// Read the Movements log back so the app can stack movements onto the counted baseline and show a
+// live per-building on-hand. Read-only; matched to columns by header name (robust to reordering).
+// A non-empty "Voids" cell marks a movement that should be ignored.
+async function getMovements(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  let values;
+  try { values = await sheets.readAll(MOVEMENTS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
+  if (!values.length) return [];
+  const H = values[0].map((h) => String(h).trim().toLowerCase());
+  const at = (n) => H.indexOf(n);
+  const iBarcode = at('barcode'), iProduct = at('product'), iDesc = at('description'), iKind = at('kind'),
+        iQtyEach = at('qty each'), iFrom = at('from building'), iTo = at('to building'), iVoids = at('voids');
+  const g = (r, i) => (i === -1 ? '' : str_(r[i]));
+  const out = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    const prod = g(r, iProduct), bc = g(r, iBarcode);
+    if (!prod && !bc) continue;                      // skip blank rows
+    out.push({
+      product: prod, barcode: bc, desc: g(r, iDesc), kind: g(r, iKind),
+      qtyEach: num_(iQtyEach === -1 ? '' : r[iQtyEach]),
+      fromBuilding: g(r, iFrom), toBuilding: g(r, iTo),
+      voided: !!g(r, iVoids),
+    });
+  }
+  return out;
 }
 
 // ---------------- value helpers (match the old Apps Script) ----------------

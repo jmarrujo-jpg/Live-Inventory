@@ -529,7 +529,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v56-fromtiles';
+var APP_VERSION = 'v57-perbuilding';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -567,29 +567,47 @@ function onCardTo(v){ const el=$('prodHint'); if(el){ const b=buildingByName(v);
 
 /* ---- From-building tiles: only buildings the counts log shows holding this product ---- */
 function currentKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='cans'?'cans':'ends'); }
-// Buildings currently holding this product, from the counts master log — newest count at each
-// location (older counts are superseded by buildLogIndex). Location prefix -> building via the
-// Buildings tab's Location Prefix. Returns [{name, qty, production}] highest on-hand first.
+// Resolve a location prefix (e.g. "M") to a building name via the Buildings tab's Location Prefix.
+function buildingForPrefix(pfx){
+  const b = BUILDINGS.find(function(x){ return x.prefix && norm(x.prefix)===norm(pfx); });
+  return b ? b.name : pfx;   // fall back to the raw prefix if no Buildings row matches
+}
+// Live per-building on-hand for a product: the latest count at each location (older counts are
+// superseded by buildLogIndex), rolled up to a PER-BUILDING total, then this app's own movements
+// stacked on top (a movement leaves the From building and joins the To building). Only buildings
+// that still hold stock are returned, highest on-hand first: [{name, qty, production}].
 function buildingsWithStock(item, key){
   const dep = key==='plastics' ? 'plastics' : 'metals';
   const kindWant = key==='cans' ? 'Cans' : (key==='ends' ? 'Ends' : '');
   const code = norm(item.code), desc = norm(item.desc);
-  const byPfx = {};
+  // Product codes are unique, so match on code first; description is a fallback for code-less rows.
+  const mine = function(){ for(let i=0;i<arguments.length;i++){ const f=norm(arguments[i]); if(f && ((code&&f===code)||(desc&&f===desc))) return true; } return false; };
+  const byBldg = {};   // building NAME -> net on-hand
+  const add = function(name, q){ if(name) byBldg[name] = (byBldg[name]||0) + q; };
+  // 1) counted baseline — newest count at each location, rolled up per building
   const idx = LOGIDX[dep] || {};
   Object.keys(idx).forEach(function(locKey){
     (idx[locKey]||[]).forEach(function(r){
       if(dep==='metals' && kindWant && r.kind && norm(r.kind)!==norm(kindWant)) return;
-      const mine = (code && norm(r.product)===code) || (desc && norm(r.desc)===desc);
-      if(!mine) return;
-      const q = Number(r.qty)||0; if(q<=0) return;
+      if(!mine(r.product, r.desc)) return;
+      const q = Number(r.qty)||0; if(!q) return;
       const pfx = parseLoc(r.loc).bldg; if(!pfx) return;
-      byPfx[pfx] = (byPfx[pfx]||0) + q;
+      add(buildingForPrefix(pfx), q);
     });
   });
+  // 2) stack movements this app has logged (skip voided): out of From, into To
+  (MOVES||[]).forEach(function(m){
+    if(m.voided) return;
+    if(!mine(m.product, m.barcode, m.desc)) return;
+    const q = Number(m.qtyEach)||0; if(!q) return;
+    add(m.fromBuilding, -q);
+    add(m.toBuilding, q);
+  });
   const out = [];
-  Object.keys(byPfx).forEach(function(pfx){
-    const b = BUILDINGS.find(function(x){ return x.prefix && norm(x.prefix)===norm(pfx); });
-    out.push({ name: b?b.name:pfx, qty: byPfx[pfx], production: b?b.production:false });
+  Object.keys(byBldg).forEach(function(name){
+    const q = byBldg[name]; if(q<=0) return;   // hide emptied / negative buildings
+    const b = BUILDINGS.find(function(x){ return x.name===name; });
+    out.push({ name:name, qty:q, production: b?b.production:false });
   });
   out.sort(function(a,b){ return b.qty - a.qty; });
   return out;
@@ -610,15 +628,17 @@ function renderFromTiles(){
   if(!state.current){ box.innerHTML=''; _fromOpts=[]; return; }
   const key=currentKey();
   const prod=productionBuildingFor(key);
-  const stock = LOG_LOADED ? buildingsWithStock(state.current, key) : [];
+  // On-hand needs BOTH the counts baseline and the movement ledger; proceed once each has resolved.
+  const ready = (LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
+  const stock = ready ? buildingsWithStock(state.current, key) : [];
   let opts, note='';
-  if(LOG_LOADED && stock.length){
+  if(ready && stock.length){
     opts = stock.slice();
     if(prod && !opts.some(function(o){ return o.name===prod.name; })) opts.push({name:prod.name, qty:null, production:true});
   } else {
-    // No counted stock (or log still loading) — let them pick any building; Production stays offered.
-    note = !LOG_LOADED ? 'Loading on-hand stock…'
-         : (LOG_ERR ? 'Stock list unavailable — pick where it’s moving from.'
+    // Still loading, unavailable, or nothing on hand — let them pick any building; Production stays offered.
+    note = !ready ? 'Loading on-hand stock…'
+         : ((LOG_ERR||MOVES_ERR) ? 'Live stock unavailable — pick where it’s moving from.'
                     : 'No counted stock for this item — pick where it’s moving from.');
     opts = BUILDINGS.filter(function(b){ return !b.production; }).map(function(b){ return {name:b.name, qty:null, production:false}; });
     if(prod) opts.push({name:prod.name, qty:null, production:true});
@@ -936,6 +956,14 @@ function loadLogs(){
     LOG.metals=(res&&res.metals)||[]; LOG.plastics=(res&&res.plastics)||[];
     buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); renderFromTiles(); if(state.mode==='row') renderRowPanel();
   }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; renderFromTiles(); if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
+}
+
+/* ---- movement ledger (read back so on-hand = counted baseline +/- movements) ---- */
+var MOVES=[], MOVES_LOADED=false, MOVES_ERR=false;
+function loadMoves(){
+  return callApi('getMovements',[]).then(function(res){
+    MOVES = Array.isArray(res) ? res : []; MOVES_LOADED=true; MOVES_ERR=false; renderFromTiles();
+  }).catch(function(err){ MOVES_ERR=true; MOVES_LOADED=false; renderFromTiles(); console.warn('movements load failed',err); });
 }
 // Split a total into full units/pallets + loose, using the item's per-pallet number.
 function unitsBreakdown(total, per){
@@ -1589,6 +1617,8 @@ async function saveEntry(){
   callApi('logMovement',[movement]).then(function(res){
     _saving=false;
     const flags=(res&&res.flags)||'';
+    // Stack this movement onto the live on-hand right away (no round-trip needed for the next scan).
+    MOVES.push({ product:code||desc, barcode:code, desc:desc, kind:category, qtyEach:total, fromBuilding:from, toBuilding:to, voided:false });
     activeEntries().unshift({code:code,desc:desc,category:category,per:per,full:full,extra:extra,total:total,from:from,to:to,flags:flags,counter:counter});
     persistSession(); renderRecent();
     toast('Saved \u00b7 '+total.toLocaleString()+' units'+(flags?' \u00b7 '+flags:''));
@@ -1680,7 +1710,8 @@ Promise.all([callApi('getLookups',[]), callApi('getBuildings',[])]).then(functio
   BUILDINGS = r[1]||[];
   initBuildingSelect();     // populate the (hidden) building dropdown from the Buildings tab
   onData(r[0]);
-  loadLogs();               // counts master log -> which buildings hold each product (From tiles)
+  loadLogs();               // counts master log -> counted per-building baseline (From tiles)
+  loadMoves();              // movement ledger -> stacked on the baseline for live on-hand
 }).catch(onDataFail);
 
 /* ---- toast ---- */
