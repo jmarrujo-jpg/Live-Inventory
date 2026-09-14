@@ -201,6 +201,9 @@ input,select{font-family:inherit;font-size:16px}
 .kp-grid button.is-press,.calc-grid button.is-press,.kp-calc.is-press{filter:brightness(.82);transform:scale(.94)}
 /* leave room to scroll the active field above the docked pad */
 body.kp-open #count{padding-bottom:290px}
+/* PIN pad on the sign-in / create-account / approvals screens — sits above the auth cards */
+.keypad.pinpad{z-index:90}
+body.pin-open #app{padding-bottom:320px}
 /* alphanumeric keyboard (check-value prompt, Weight, Type) — sits above the modal (z 80) */
 .tkeypad{z-index:90}
 .tk-grid{max-width:500px;margin:0 auto}
@@ -555,8 +558,8 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
       <label class="auth-lbl">Your name</label>
       <select id="loginName" class="authselect"></select>
       <label class="auth-lbl">4-digit PIN</label>
-      <input id="loginPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off"
-             oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')doLogin()">
+      <input id="loginPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off"
+             onfocus="pinBind('loginPin')" onblur="pinOnBlur()" onkeydown="if(event.key==='Enter')doLogin()">
       <button type="button" class="btn primary authbtn" id="loginBtn" onclick="doLogin()">Sign in</button>
       <div class="auth-links">
         <span class="linkbtn" onclick="showScreen('signup')">＋ Create account</span>
@@ -594,9 +597,9 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
         <option>Manager</option>
       </select>
       <label class="auth-lbl">Create a 4-digit PIN</label>
-      <input id="suPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <input id="suPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off" onfocus="pinBind('suPin')" onblur="pinOnBlur()">
       <label class="auth-lbl">Confirm PIN</label>
-      <input id="suPin2" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <input id="suPin2" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off" onfocus="pinBind('suPin2')" onblur="pinOnBlur()">
       <button type="button" class="btn primary authbtn" id="suBtn" onclick="doSignup()">Create account</button>
       <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
       <div class="auth-msg" id="suMsg"></div>
@@ -612,8 +615,8 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
       <label class="auth-lbl">Manager name</label>
       <select id="mgrName" class="authselect"></select>
       <label class="auth-lbl">Manager PIN</label>
-      <input id="mgrPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off"
-             oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')loadPending()">
+      <input id="mgrPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off"
+             onfocus="pinBind('mgrPin')" onblur="pinOnBlur()" onkeydown="if(event.key==='Enter')loadPending()">
       <button type="button" class="btn primary authbtn" id="mgrBtn" onclick="loadPending()">Load pending accounts</button>
       <div id="pendingList" class="pendinglist"></div>
       <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
@@ -692,6 +695,26 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   <div class="tk-grid" id="tkGrid"></div>
 </div>
 
+<!-- on-screen number pad for PIN entry (sign-in / create-account / approvals). PIN fields use
+     inputmode=none + readonly so the phone's own keyboard never appears; this pad drives them. -->
+<div class="keypad pinpad" id="pinpad" aria-hidden="true">
+  <div class="kp-target"><span>Enter <b id="pinField">PIN</b></span></div>
+  <div class="kp-grid">
+    <button type="button" onpointerdown="pinTap(event,'1')">1</button>
+    <button type="button" onpointerdown="pinTap(event,'2')">2</button>
+    <button type="button" onpointerdown="pinTap(event,'3')">3</button>
+    <button type="button" onpointerdown="pinTap(event,'4')">4</button>
+    <button type="button" onpointerdown="pinTap(event,'5')">5</button>
+    <button type="button" onpointerdown="pinTap(event,'6')">6</button>
+    <button type="button" onpointerdown="pinTap(event,'7')">7</button>
+    <button type="button" onpointerdown="pinTap(event,'8')">8</button>
+    <button type="button" onpointerdown="pinTap(event,'9')">9</button>
+    <button type="button" class="kp-back" onpointerdown="pinBack(event)" aria-label="Delete">⌫</button>
+    <button type="button" onpointerdown="pinTap(event,'0')">0</button>
+    <button type="button" class="kp-go" onpointerdown="pinTap(event,'go')" aria-label="Continue">✓</button>
+  </div>
+</div>
+
 <script>
 /* ====== Backend config ======
    This page is static (GitHub Pages). It talks to a Cloudflare Worker that reads/writes the
@@ -702,7 +725,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v67-nocache-login';
+var APP_VERSION = 'v68-pinpad';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1797,9 +1820,10 @@ function calc(){
 function nextField(id){ const el=$(id); if(el){ kpBind(id); el.focus(); if(el.select) el.select(); } }
 /* Height of whichever docked keyboard is currently up (0 if none). */
 function keypadH(){
-  const kp=$('cardKeypad'), tk=$('textKeypad');
+  const kp=$('cardKeypad'), tk=$('textKeypad'), pp=$('pinpad');
   if(kp && kp.classList.contains('show')) return kp.getBoundingClientRect().height;
   if(tk && tk.classList.contains('show')) return tk.getBoundingClientRect().height;
+  if(pp && pp.classList.contains('show')) return pp.getBoundingClientRect().height;
   return 0;
 }
 /* Scroll just enough to sit the anchor's bottom right above the docked keyboard — instead of
@@ -1876,6 +1900,57 @@ document.addEventListener('pointerdown', function(ev){
   b.classList.add('is-press');
   setTimeout(function(){ b.classList.remove('is-press'); }, 160);
 });
+
+/* ---- on-screen PIN pad (sign-in / create-account / approvals) ----
+   The PIN boxes are inputmode=none + readonly so no phone keyboard appears; this docked numeric
+   pad drives them. Buttons fire on pointerdown and preventDefault so focus stays on the box. */
+var activePinField=null;
+function pinIsField(id){ return id==='loginPin'||id==='suPin'||id==='suPin2'||id==='mgrPin'; }
+function pinShow(){ kpHide(); tkHide(); $('pinpad').classList.add('show'); $('pinpad').setAttribute('aria-hidden','false'); document.body.classList.add('pin-open'); }
+function pinHide(){ const p=$('pinpad'); if(!p) return; p.classList.remove('show'); p.setAttribute('aria-hidden','true'); document.body.classList.remove('pin-open'); }
+function pinBind(id){
+  if(!pinIsField(id)) return;
+  activePinField=id;
+  const l=$('pinField'); if(l){ l.textContent=({loginPin:'PIN',suPin:'new PIN',suPin2:'PIN again',mgrPin:'manager PIN'})[id]||'PIN'; }
+  pinShow();
+  const el=$(id); if(el){ setTimeout(function(){ scrollFieldUp(el); },40); }
+}
+function pinOnBlur(){
+  setTimeout(function(){
+    const a=document.activeElement;
+    if(a && (pinIsField(a.id) || $('pinpad').contains(a))) return;
+    pinHide();
+  },0);
+}
+// If focus lands anywhere other than a PIN box or the pad itself, tuck the pad away.
+document.addEventListener('focusin', function(ev){
+  if(!$('pinpad').classList.contains('show')) return;
+  const a=ev.target;
+  if(a && (pinIsField(a.id) || $('pinpad').contains(a))) return;
+  pinHide();
+});
+function pinTap(e,k){
+  if(e){ e.preventDefault(); }
+  const el=$(activePinField); if(!el) return;
+  if(k==='go'){ pinGo(); return; }
+  if((el.value||'').length>=4) return;                 // 4-digit cap
+  el.value=(el.value||'')+k;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  if(el.value.length===4 && activePinField!=='suPin2') pinGo();  // auto-advance/submit at 4 digits
+}
+function pinBack(e){
+  if(e){ e.preventDefault(); }
+  const el=$(activePinField); if(!el||!el.value) return;
+  el.value=el.value.slice(0,-1); el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function pinGo(){
+  const id=activePinField;
+  if(id==='loginPin'){ doLogin(); }
+  else if(id==='mgrPin'){ loadPending(); }
+  else if(id==='suPin'){ const n=$('suPin2'); if(n){ pinBind('suPin2'); n.focus(); } }
+  else if(id==='suPin2'){ doSignup(); }
+}
+
 /* ---- on-screen alphanumeric keyboard for text fields ----
    The check-value prompt and the Weight/Type boxes need letters as well as digits, and the paired
    scanner suppresses the iOS soft keyboard, so those fields use inputmode=none and this docked
@@ -2090,6 +2165,7 @@ function authMsg(id,msg,ok){ const el=$(id); if(el){ el.textContent=msg||''; el.
 
 // Show exactly one top-level screen: 'login' | 'signup' | 'approvals' | 'app'.
 function showScreen(scr){
+  pinHide();   // never leave the PIN pad up across a screen change
   ['login','signup','approvals'].forEach(function(id){ const el=$(id); if(el) el.hidden = (id!==scr); });
   const inApp = (scr==='app');
   const ub=$('userbar'); if(ub) ub.hidden=!inApp;
