@@ -702,7 +702,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v66-accounts';
+var APP_VERSION = 'v67-nocache-login';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1044,7 +1044,7 @@ function persistSession(){
   try{
     localStorage.setItem(SESSION_KEY, JSON.stringify({
       entries: state.entries,
-      counter: $('counterName') ? $('counterName').value : '',
+      counter: '',   // never cache the user's name — they sign in each visit
       lastDept: state.dept,
       metalKind: state.metalKind,
       building: state.building
@@ -1066,16 +1066,8 @@ function loadSession(){
 }
 function restoreSession(s){
   if(!s) return;
-  // Restore the typed counter name. One-time cleanup: earlier builds auto-filled "Jonathan"/"Lisa",
-  // so clear those once (guarded by a flag) without wiping a name someone deliberately re-types.
-  let counter = (typeof s.counter==='string') ? s.counter : '';
-  try{
-    if(!localStorage.getItem('cscCounterMigrated_v1')){
-      if(counter==='Jonathan' || counter==='Lisa') counter='';
-      localStorage.setItem('cscCounterMigrated_v1','1');
-    }
-  }catch(e){}
-  if($('counterName')) $('counterName').value = counter;
+  // The user's name is never cached — leave the counter field blank until sign-in.
+  if($('counterName')) $('counterName').value = '';
   persistSession();
 }
 
@@ -2116,7 +2108,7 @@ function populateUserDropdowns(){
 // Reflect the signed-in user across the UI (hidden counter field feeds every movement's User).
 function setUser(u){
   AUTH=u;
-  try{ localStorage.setItem('cscUser', JSON.stringify(u)); }catch(e){}
+  // Do NOT cache the signed-in user anywhere — every visit must sign in again.
   const ci=$('counterName'); if(ci) ci.value=u.name;
   const un=$('userName'); if(un) un.textContent=u.name;
   const ur=$('userRole'); if(ur) ur.textContent=(u.role?(' · '+u.role):'')+(u.department?(' · '+u.department):'')+(u.shift&&/plastic/i.test(u.department||'')?(' · Shift '+u.shift):'');
@@ -2192,13 +2184,9 @@ function approve(i){
 }
 function initAuth(){
   populateUserDropdowns();
-  const saved=loadUser();
-  if(saved && saved.name && USERS.some(function(u){ return normNameJs(u.name)===normNameJs(saved.name); })){
-    setUser(saved); enterApp(); showScreen('app');   // resume the session
-  } else {
-    if(saved){ try{ localStorage.removeItem('cscUser'); }catch(e){} }  // no longer approved
-    showScreen('login');
-  }
+  // Never auto-resume: the user must sign in every time the app is opened.
+  try{ localStorage.removeItem('cscUser'); }catch(e){}
+  showScreen('login');
 }
 
 Promise.all([callApi('getLookups',[]), callApi('getBuildings',[]), callApi('getUsers',[])]).then(function(r){
