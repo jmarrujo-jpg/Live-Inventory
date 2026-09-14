@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v14-staged-read' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v15-users' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -76,6 +76,11 @@ async function handle(fn, args, env) {
   if (fn === 'getBuildings') return getBuildings(env); // reads the Movements workbook's Buildings tab
   if (fn === 'getMovements') return getMovements(env); // reads back the Movements log (per-building deltas)
   if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
+  if (fn === 'getUsers') return getUsers(env);                // approved users for the sign-in dropdown (no PINs)
+  if (fn === 'signupUser') return signupUser(env, args[0]);   // create a pending account
+  if (fn === 'authUser') return authUser(env, args[0], args[1]); // verify name + PIN
+  if (fn === 'listPending') return listPending(env, args[0], args[1]); // manager: pending accounts
+  if (fn === 'approveUser') return approveUser(env, args[0], args[1], args[2]); // manager: approve one
   const sheets = await makeSheets(env);
   switch (fn) {
     case 'getLookups': return getLookups(sheets);   // READ ONLY — the lookup workbook is never written
@@ -221,6 +226,94 @@ async function getMovements(env) {
     });
   }
   return out;
+}
+
+// ---------------- users / sign-in / approvals ----------------
+// A "Users" tab in the Movements workbook holds accounts. Columns (by position):
+//   Name | Department | Shift # | Password (4-digit PIN) | Role | Approval
+// Approval must read "YES" for the account to sign in and to appear in the app's name dropdown.
+// PINs are verified server-side and are NEVER returned to the browser.
+const USERS_TAB = 'Users';
+const USERS_HEADER = ['Name', 'Department', 'Shift #', 'Password', 'Role', 'Approval'];
+function isApprovedVal(v) { return String(v || '').trim().toUpperCase() === 'YES'; }
+function normName(s) { return String(s || '').trim().toLowerCase(); }
+
+// Read the Users tab into structured rows (includes PINs + sheet row numbers — server-side only).
+async function readUsers(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  let values;
+  try { values = await sheets.readAll(USERS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return { sheets, rows: [] }; throw e; }
+  const rows = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    const name = str_(r[0]);
+    if (!name) continue;
+    rows.push({ row: n + 1, name, department: str_(r[1]), shift: str_(r[2]), password: str_(r[3]), role: str_(r[4]), approval: str_(r[5]) });
+  }
+  return { sheets, rows };
+}
+
+// Public: approved users only, WITHOUT PINs — feeds the sign-in dropdown.
+async function getUsers(env) {
+  const { rows } = await readUsers(env);
+  return rows.filter((u) => isApprovedVal(u.approval))
+    .map((u) => ({ name: u.name, department: u.department, shift: u.shift, role: u.role }));
+}
+
+// Create a pending account (Approval left blank until a manager approves).
+async function signupUser(env, u) {
+  u = u || {};
+  const name = str_(u.name);
+  if (!name) throw new Error('Full name is required');
+  const pin = str_(u.pin);
+  if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly 4 digits');
+  const dept = str_(u.department);
+  const role = str_(u.role);
+  if (!dept) throw new Error('Department is required');
+  if (!role) throw new Error('Role is required');
+  const { sheets, rows } = await readUsers(env);
+  if (rows.some((x) => normName(x.name) === normName(name))) throw new Error('That name already exists — pick another or ask a manager.');
+  // Shift # only applies to Plastics; everyone else is shift 1.
+  const shift = /plastic/i.test(dept) ? (str_(u.shift) || '1') : '1';
+  await sheets.appendEnsuring(USERS_TAB, [name, dept, shift, pin, role, ''], USERS_HEADER);
+  return { ok: true, pending: true };
+}
+
+// Verify name + PIN. Must be approved to sign in. Returns the user (no PIN).
+async function authUser(env, name, pin) {
+  const { rows } = await readUsers(env);
+  const u = rows.find((x) => normName(x.name) === normName(str_(name)));
+  if (!u) throw new Error('Name not found');
+  if (str_(u.password) !== str_(pin)) throw new Error('Wrong PIN');
+  if (!isApprovedVal(u.approval)) throw new Error('Account is awaiting manager approval');
+  return { name: u.name, department: u.department, shift: u.shift, role: u.role };
+}
+
+// Confirm the caller is an approved Manager, returning all rows for further action.
+async function verifyManager(env, name, pin) {
+  const { rows } = await readUsers(env);
+  const u = rows.find((x) => normName(x.name) === normName(str_(name)));
+  if (!u || str_(u.password) !== str_(pin)) throw new Error('Manager sign-in failed');
+  if (!/manager/i.test(u.role) || !isApprovedVal(u.approval)) throw new Error('Not an approved manager');
+  return rows;
+}
+
+// Manager: list accounts still awaiting approval (no PINs).
+async function listPending(env, managerName, managerPin) {
+  const rows = await verifyManager(env, managerName, managerPin);
+  return rows.filter((u) => !isApprovedVal(u.approval))
+    .map((u) => ({ name: u.name, department: u.department, shift: u.shift, role: u.role }));
+}
+
+// Manager: approve one account (sets Approval = YES).
+async function approveUser(env, targetName, managerName, managerPin) {
+  const rows = await verifyManager(env, managerName, managerPin);
+  const t = rows.find((x) => normName(x.name) === normName(str_(targetName)));
+  if (!t) throw new Error('User not found');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  await sheets.update(USERS_TAB + '!F' + t.row, [['YES']]);   // column F = Approval
+  return { ok: true };
 }
 
 // ---------------- value helpers (match the old Apps Script) ----------------

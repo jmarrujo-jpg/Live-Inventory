@@ -407,25 +407,61 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .inv-p b{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink)}
 .inv-p .inv-d{font-size:12px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .inv-q{font-family:'JetBrains Mono';font-weight:800;font-size:16px;color:var(--dept);white-space:nowrap}
+/* ---- accounts: sign-in / create / approvals ---- */
+#login,#signup,#approvals{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 48px}
+.authcard{width:100%;max-width:430px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px 20px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(15,35,80,.07)}
+.auth-logo{height:56px;width:auto;align-self:center;margin-bottom:10px}
+.auth-h1{font-family:'Archivo';font-weight:900;font-size:26px;letter-spacing:-.02em;text-align:center;margin:0 0 4px;color:var(--ink)}
+.auth-sub{text-align:center;color:var(--ink-soft);font-size:13px;margin:0 0 12px;line-height:1.4}
+.auth-lbl{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin:12px 0 6px}
+.authinput,.authselect,.authpin{height:52px;border:1.5px solid var(--line);border-radius:11px;padding:0 14px;background:#fff;font-size:16px;outline:none;width:100%}
+.authinput:focus,.authselect:focus,.authpin:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+.authselect{-webkit-appearance:none;appearance:none;font-weight:700;color:var(--dept);padding-right:42px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center}
+.authpin{font-family:'JetBrains Mono';font-size:24px;font-weight:800;letter-spacing:.5em;text-align:center}
+.authbtn{width:100%;height:54px;margin-top:18px;font-size:16px}
+.auth-links{display:flex;justify-content:space-between;gap:12px;margin-top:16px;flex-wrap:wrap}
+.auth-links .linkbtn{font-weight:700;color:var(--dept)}
+.auth-msg{margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--danger);min-height:18px}
+.auth-msg.ok{color:var(--ok)}
+.pendinglist{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.pinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pinfo b{font-size:15px;color:var(--ink)}
+.pinfo span{font-size:12px;color:var(--ink-soft)}
+.prow button{height:40px;padding:0 16px;font-size:14px;flex:0 0 auto}
+/* signed-in bar */
+#userbar{display:flex;align-items:center;gap:12px;padding:10px 16px 0}
+.logoutbtn{height:38px;padding:0 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--panel);font-weight:800;font-size:13px;color:var(--dept);cursor:pointer}
+.logoutbtn:active{transform:scale(.97)}
+.whoami{font-size:13px;color:var(--ink-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whoami b{color:var(--ink);font-size:14px}
 @media (min-width:560px){ .dept-card .sub{max-width:60%} }
 </style>
 </head>
 <body>
 <div id="app">
 
+  <!-- signed-in bar (logout top-left, name to its right) -->
+  <div id="userbar" hidden>
+    <button type="button" class="logoutbtn" onclick="logout()">⤶ Logout</button>
+    <div class="whoami">Signed in: <b id="userName"></b><span id="userRole"></span></div>
+  </div>
+
   <!-- top tabs: move stock  /  live inventory -->
-  <div class="viewtabs">
+  <div class="viewtabs" hidden>
     <button type="button" id="tabMove" class="on" onclick="showView('move')">➕ Move stock</button>
     <button type="button" id="tabInv" onclick="showView('inventory')">📦 Inventory</button>
   </div>
 
   <!-- COUNT -->
-  <section id="count">
+  <section id="count" hidden>
     <div class="topbar">
       <div class="title">
         <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> <span id="deptTitle">Live inventory</span></div>
-        <div class="who">Counter: <input id="counterName" placeholder="your name" autocomplete="off"></div>
+        <div class="who" id="whoName"></div>
       </div>
+      <input id="counterName" type="hidden">
       <div class="count-badge"><b id="sessCount">0</b><small>moves</small></div>
     </div>
 
@@ -510,6 +546,81 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
     </div>
   </section>
 
+  <!-- SIGN IN -->
+  <section id="login" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">CSC Live Inventory</h1>
+      <p class="auth-sub">Sign in so moves are logged under your name.</p>
+      <label class="auth-lbl">Your name</label>
+      <select id="loginName" class="authselect"></select>
+      <label class="auth-lbl">4-digit PIN</label>
+      <input id="loginPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" class="btn primary authbtn" id="loginBtn" onclick="doLogin()">Sign in</button>
+      <div class="auth-links">
+        <span class="linkbtn" onclick="showScreen('signup')">＋ Create account</span>
+        <span class="linkbtn" onclick="showScreen('approvals')">Manager approvals →</span>
+      </div>
+      <div class="auth-msg" id="loginMsg"></div>
+    </div>
+  </section>
+
+  <!-- CREATE ACCOUNT -->
+  <section id="signup" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">Create account</h1>
+      <p class="auth-sub">A manager approves new accounts before you can sign in.</p>
+      <label class="auth-lbl">Full name</label>
+      <input id="suName" class="authinput" autocomplete="off" placeholder="First Last">
+      <label class="auth-lbl">Department</label>
+      <select id="suDept" class="authselect" onchange="onSuDept()">
+        <option value="">— select —</option>
+        <option>Metals Department</option>
+        <option>Plastics Department</option>
+        <option>Shipping Department</option>
+        <option>Litho Department</option>
+      </select>
+      <div id="suShiftRow" hidden>
+        <label class="auth-lbl">Shift # (Plastics only)</label>
+        <select id="suShift" class="authselect"><option>1</option><option>2</option><option>3</option></select>
+      </div>
+      <label class="auth-lbl">Role</label>
+      <select id="suRole" class="authselect">
+        <option value="">— select —</option>
+        <option>Forklift Driver</option>
+        <option>Shipping</option>
+        <option>Manager</option>
+      </select>
+      <label class="auth-lbl">Create a 4-digit PIN</label>
+      <input id="suPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <label class="auth-lbl">Confirm PIN</label>
+      <input id="suPin2" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <button type="button" class="btn primary authbtn" id="suBtn" onclick="doSignup()">Create account</button>
+      <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
+      <div class="auth-msg" id="suMsg"></div>
+    </div>
+  </section>
+
+  <!-- MANAGER APPROVALS -->
+  <section id="approvals" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">Manager approvals</h1>
+      <p class="auth-sub">Sign in as a manager to approve pending accounts.</p>
+      <label class="auth-lbl">Manager name</label>
+      <select id="mgrName" class="authselect"></select>
+      <label class="auth-lbl">Manager PIN</label>
+      <input id="mgrPin" class="authpin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')loadPending()">
+      <button type="button" class="btn primary authbtn" id="mgrBtn" onclick="loadPending()">Load pending accounts</button>
+      <div id="pendingList" class="pendinglist"></div>
+      <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
+      <div class="auth-msg" id="mgrMsg"></div>
+    </div>
+  </section>
+
 </div>
 <div id="toast"></div>
 <div class="buildtag" id="buildTag"></div>
@@ -591,7 +702,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v65-totiles';
+var APP_VERSION = 'v66-accounts';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1979,12 +2090,125 @@ function onDataFail(err){
   toast('Could not load products — reload','err');
   console.error(err);
 }
-Promise.all([callApi('getLookups',[]), callApi('getBuildings',[])]).then(function(r){
+/* ================= accounts: sign-in / create / manager approvals ================= */
+var AUTH=null, USERS=[];
+function normNameJs(s){ return (s||'').toString().trim().toLowerCase(); }
+function loadUser(){ try{ return JSON.parse(localStorage.getItem('cscUser')||'null'); }catch(e){ return null; } }
+function authMsg(id,msg,ok){ const el=$(id); if(el){ el.textContent=msg||''; el.className='auth-msg'+(ok?' ok':''); } }
+
+// Show exactly one top-level screen: 'login' | 'signup' | 'approvals' | 'app'.
+function showScreen(scr){
+  ['login','signup','approvals'].forEach(function(id){ const el=$(id); if(el) el.hidden = (id!==scr); });
+  const inApp = (scr==='app');
+  const ub=$('userbar'); if(ub) ub.hidden=!inApp;
+  const vt=document.querySelector('.viewtabs'); if(vt) vt.hidden=!inApp;
+  if(inApp){ showView(state.view||'move'); }
+  else { const c=$('count'), inv=$('inventory'); if(c) c.hidden=true; if(inv) inv.hidden=true; }
+  if(scr==='login'){ const p=$('loginPin'); if(p) p.value=''; }
+}
+function populateUserDropdowns(){
+  const nm=$('loginName');
+  if(nm){ nm.innerHTML='<option value="">— select your name —</option>'+USERS.map(function(u){ return '<option>'+esc(u.name)+'</option>'; }).join(''); }
+  const mg=$('mgrName');
+  if(mg){ const mgrs=USERS.filter(function(u){ return /manager/i.test(u.role); });
+    mg.innerHTML='<option value="">— select —</option>'+mgrs.map(function(u){ return '<option>'+esc(u.name)+'</option>'; }).join(''); }
+}
+// Reflect the signed-in user across the UI (hidden counter field feeds every movement's User).
+function setUser(u){
+  AUTH=u;
+  try{ localStorage.setItem('cscUser', JSON.stringify(u)); }catch(e){}
+  const ci=$('counterName'); if(ci) ci.value=u.name;
+  const un=$('userName'); if(un) un.textContent=u.name;
+  const ur=$('userRole'); if(ur) ur.textContent=(u.role?(' · '+u.role):'')+(u.department?(' · '+u.department):'')+(u.shift&&/plastic/i.test(u.department||'')?(' · Shift '+u.shift):'');
+  const wl=$('whoName'); if(wl) wl.textContent=u.name;
+  persistSession();
+}
+function doLogin(){
+  const name=($('loginName')||{}).value||'', pin=($('loginPin')||{}).value||'';
+  if(!name){ authMsg('loginMsg','Pick your name.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('loginMsg','Enter your 4-digit PIN.'); return; }
+  const btn=$('loginBtn'); if(btn){ btn.disabled=true; btn.textContent='Signing in…'; }
+  authMsg('loginMsg','');
+  callApi('authUser',[name,pin]).then(function(u){
+    setUser(u); const p=$('loginPin'); if(p) p.value='';
+    enterApp(); showScreen('app');
+  }).catch(function(e){ authMsg('loginMsg', (e&&e.message)||'Sign-in failed'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Sign in'; } });
+}
+function logout(){
+  AUTH=null; try{ localStorage.removeItem('cscUser'); }catch(e){}
+  const ci=$('counterName'); if(ci) ci.value='';
+  clearCardOnly();
+  const ln=$('loginName'); if(ln) ln.value='';
+  showScreen('login');
+}
+function onSuDept(){ const isPl=/plastic/i.test((($('suDept')||{}).value)||''); const row=$('suShiftRow'); if(row) row.hidden=!isPl; }
+function doSignup(){
+  const name=(($('suName')||{}).value||'').trim(), dept=($('suDept')||{}).value||'', role=($('suRole')||{}).value||'';
+  const pin=($('suPin')||{}).value||'', pin2=($('suPin2')||{}).value||'';
+  const shift=/plastic/i.test(dept)?(($('suShift')||{}).value||'1'):'1';
+  if(!name){ authMsg('suMsg','Enter your full name.'); return; }
+  if(!dept){ authMsg('suMsg','Pick a department.'); return; }
+  if(!role){ authMsg('suMsg','Pick a role.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('suMsg','PIN must be 4 digits.'); return; }
+  if(pin!==pin2){ authMsg('suMsg','PINs don’t match.'); return; }
+  const btn=$('suBtn'); if(btn){ btn.disabled=true; btn.textContent='Creating…'; }
+  authMsg('suMsg','');
+  callApi('signupUser',[{name:name,department:dept,shift:shift,role:role,pin:pin}]).then(function(){
+    ['suName','suPin','suPin2'].forEach(function(id){ const el=$(id); if(el) el.value=''; });
+    const d=$('suDept'); if(d) d.value=''; const r=$('suRole'); if(r) r.value=''; onSuDept();
+    authMsg('suMsg','✓ Submitted. A manager must approve before you can sign in.', true);
+  }).catch(function(e){ authMsg('suMsg', (e&&e.message)||'Could not create account'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Create account'; } });
+}
+var _mgr=null, _pending=[];
+function loadPending(){
+  const name=($('mgrName')||{}).value||'', pin=($('mgrPin')||{}).value||'';
+  if(!name){ authMsg('mgrMsg','Pick your manager name.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('mgrMsg','Enter your PIN.'); return; }
+  const btn=$('mgrBtn'); if(btn){ btn.disabled=true; btn.textContent='Loading…'; }
+  authMsg('mgrMsg','');
+  callApi('listPending',[name,pin]).then(function(list){
+    _mgr={name:name,pin:pin}; renderPending(list||[]);
+    authMsg('mgrMsg', (list&&list.length)?'':'No accounts awaiting approval.', true);
+  }).catch(function(e){ _mgr=null; renderPending([]); authMsg('mgrMsg', (e&&e.message)||'Sign-in failed'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Load pending accounts'; } });
+}
+function renderPending(list){
+  _pending=list||[];
+  const box=$('pendingList'); if(!box) return;
+  box.innerHTML=_pending.map(function(u,i){
+    return '<div class="prow"><div class="pinfo"><b>'+esc(u.name)+'</b><span>'+esc(u.department||'')
+      +(u.shift&&/plastic/i.test(u.department||'')?(' · Shift '+esc(u.shift)):'')+' · '+esc(u.role||'')+'</span></div>'
+      +'<button type="button" class="btn primary" onclick="approve('+i+')">Approve</button></div>';
+  }).join('');
+}
+function approve(i){
+  const u=_pending[i]; if(!u||!_mgr) return;
+  callApi('approveUser',[u.name,_mgr.name,_mgr.pin]).then(function(){
+    toast('Approved '+u.name);
+    return callApi('getUsers',[]).then(function(us){ USERS=us||[]; populateUserDropdowns(); });
+  }).then(function(){ loadPending(); }).catch(function(e){ authMsg('mgrMsg', (e&&e.message)||'Approve failed'); });
+}
+function initAuth(){
+  populateUserDropdowns();
+  const saved=loadUser();
+  if(saved && saved.name && USERS.some(function(u){ return normNameJs(u.name)===normNameJs(saved.name); })){
+    setUser(saved); enterApp(); showScreen('app');   // resume the session
+  } else {
+    if(saved){ try{ localStorage.removeItem('cscUser'); }catch(e){} }  // no longer approved
+    showScreen('login');
+  }
+}
+
+Promise.all([callApi('getLookups',[]), callApi('getBuildings',[]), callApi('getUsers',[])]).then(function(r){
   BUILDINGS = r[1]||[];
+  USERS = r[2]||[];
   initBuildingSelect();     // populate the (hidden) building dropdown from the Buildings tab
   onData(r[0]);
   loadLogs();               // counts master log -> counted per-building baseline (From tiles)
   loadMoves();              // movement ledger -> stacked on the baseline for live on-hand
+  initAuth();               // name dropdowns + resume session or show the sign-in screen
 }).catch(onDataFail);
 
 /* ---- toast ---- */
@@ -2026,10 +2250,8 @@ function toast(msg,type){
 /* show the build/version tag */
 $('buildTag').textContent = APP_VERSION;
 
-/* ---- persist counter name + resume the saved session on open ---- */
-$('counterName').addEventListener('input', persistSession);
+/* ---- resume the saved session on open (the app itself opens after sign-in) ---- */
 restoreSession(loadSession());
-enterApp();               // skip the landing screen — one combined scan box
 initBuildingSelect();
 </script>
 </body>
