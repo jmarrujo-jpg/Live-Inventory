@@ -172,6 +172,16 @@ input,select{font-family:inherit;font-size:16px}
 .frombtn.on .fb-name{color:var(--dept)}
 .frombtn.prod{border-style:dashed}
 .frombtn.prod .fb-sub{color:#B26A00}
+/* type-selector (check value) picker */
+.varhelp{font-size:13px;color:var(--ink-soft);font-weight:600;margin:2px 2px 10px}
+.vargrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.varbtn{display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;padding:12px 13px;border:1.5px solid var(--line);
+  border-radius:12px;background:#fff;cursor:pointer;transition:transform .06s ease,border-color .1s ease,box-shadow .1s ease}
+.varbtn:active{transform:scale(.97)}
+.varbtn .varlabel{font-weight:800;font-size:17px;color:var(--ink);line-height:1.05}
+.varbtn .varcode{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--dept)}
+.varbtn.missing{opacity:.6}
+.varbtn.missing .varcode{color:var(--ink-soft)}
 .fromnote{font-size:12px;color:var(--ink-soft);margin-top:8px}
 .stepbtn{flex:0 0 58px;border-radius:10px;background:var(--dept);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center;cursor:pointer}
 .stepbtn:active{filter:brightness(.92)}
@@ -726,7 +736,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v70-checkvalues';
+var APP_VERSION = 'v71-typeselect';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1652,8 +1662,51 @@ function renderCalcHist(){
 }
 function reuseCalc(v){ const d=$('calcDisplay'); d.value=String(v); calcLast=calcEval(String(v)); $('calcResult').textContent=Number(v).toLocaleString(); }
 
-/* Open the card for a scanned/picked item — scan then enter, no pre-entry prompts. */
-function chooseItem(it){ selectItem(Object.assign({}, it)); }
+/* Open the card for a scanned/picked item. Some base codes are "type selectors": column C (Type)
+   reads "Check Value" and the description lists the real variants to choose from, e.g.
+   Select Type."-K"(K),"-NT"(NT),...  Scanning the base code (26018) must ask which type, append the
+   suffix (26018-K) and open that real item — instead of opening the base row's empty card. */
+function parseVariantOptions(desc){
+  const re=/"([^"]*)"\s*\(([^)]*)\)/g; const out=[]; let m;
+  while((m=re.exec(String(desc||'')))){ const suf=m[1].trim(); out.push({ suffix:suf, label:(m[2].trim()||suf) }); }
+  return out;
+}
+function typeIsCheck(t){ return /check\s*value/i.test(String(t||'')) || isCheckValue(t); }
+function isVariantSelector(it){ return !!it && typeIsCheck(it.type) && parseVariantOptions(it.desc).length>0; }
+var _variantBase=null, _variantOpts=[];
+function chooseItem(it){
+  if(isVariantSelector(it)){ showVariantPicker(it); return; }
+  selectItem(Object.assign({}, it));
+}
+function showVariantPicker(it){
+  state.current=null; state.editIndex=null;
+  if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.add('hide'); }
+  _variantBase={ code:it.code||'', desc:it.desc||'' };
+  _variantOpts=parseVariantOptions(it.desc);
+  const btns=_variantOpts.map(function(o,i){
+    const full=(it.code||'')+o.suffix;
+    const known=!!IDXALL[norm(full)];
+    return '<button type="button" class="varbtn'+(known?'':' missing')+'" onclick="pickVariant('+i+')">'
+      +'<span class="varlabel">'+esc(o.label)+'</span>'
+      +'<span class="varcode">'+esc(full)+(known?'':' · not in lookup')+'</span></button>';
+  }).join('');
+  $('cardMount').innerHTML=
+    '<div class="card">'
+    +'<div class="card-head"><div class="code">'+esc(it.code||'')+'</div>'
+    +'<div class="desc">Select the type to count</div></div>'
+    +'<div class="card-body"><div class="varhelp">This code needs a type — pick the one you’re moving:</div>'
+    +'<div class="vargrid">'+btns+'</div></div>'
+    +'<div class="actions"><button class="btn ghost" onclick="clearCard()">Cancel</button></div>'
+    +'</div>';
+  const cm=$('cardMount'); if(cm) setTimeout(function(){ cm.scrollIntoView({behavior:'smooth',block:'start'}); },40);
+}
+function pickVariant(i){
+  const o=_variantOpts[i], base=_variantBase; if(!o||!base) return;
+  const full=(base.code||'')+o.suffix;
+  const hit=IDXALL[norm(full)];
+  if(hit){ setCategoryFromKey(hit.key); selectItem(Object.assign({}, hit.it)); }
+  else { toast('No lookup row for '+full,'err'); }
+}
 
 /* ---- edit / delete an existing entry ---- */
 function editEntry(i){
@@ -1700,16 +1753,9 @@ function selectItem(it, edit){
   const inputVal = v => isCheckValue(v) ? '' : (v||'');
   const inputPh  = v => isCheckValue(v) ? 'enter value' : '';
 
-  // Per Pallet/Box (plastics column D, also metals Per Pallet) can be a check value — the cell holds
-  // an instruction instead of a number, meaning the counter must enter the per-unit by hand. Since
-  // this column is only ever a number or an instruction, treat ANY non-numeric, non-blank cell as a
-  // check value (INPUT, !!!ADD!!!, "verify", a note…) and surface its text as the prompt.
-  const perRawStr  = (it.perUnit==null ? '' : String(it.perUnit)).trim();
-  const perIsNum   = perRawStr!=='' && isFinite(Number(perRawStr.replace(/,/g,'')));
-  const perIsCheck = perRawStr!=='' && !perIsNum;
-  const perValStr  = perIsCheck ? '' : (it.perUnit??'');
-  const perPh      = perIsCheck ? (checkPrompt(it.perUnit) || perRawStr)
-                                : (dept==='plastics' ? 'per pallet / box' : 'per pallet');
+  // Per Pallet/Box (plastics column D, metals Per Pallet) is always a quantity — show it as-is.
+  const perValStr = it.perUnit??'';
+  const perPh     = dept==='plastics' ? 'per pallet / box' : 'per pallet';
 
   // Count-by-row can pre-fill a new card with the last count's location + full/extra split.
   const pre = (!ed && it.__prefill) ? it.__prefill : null;
@@ -1754,7 +1800,7 @@ function selectItem(it, edit){
 
         <div class="step" data-step="2" hidden>
           <div class="steplbl"><span class="stepnum">2</span> Quantity to move</div>
-          <div class="fld full"><label>${perLabel}${perIsCheck?' <span class="checktag">enter</span>':''}</label><input id="f_per" class="mono" inputmode="none" readonly value="${esc(perValStr)}" placeholder="${esc(perPh)}" oninput="calc()" onfocus="this.select();kpBind('f_per')" onblur="kpOnBlur()"></div>
+          <div class="fld full"><label>${perLabel}</label><input id="f_per" class="mono" inputmode="none" readonly value="${esc(perValStr)}" placeholder="${esc(perPh)}" oninput="calc()" onfocus="this.select();kpBind('f_per')" onblur="kpOnBlur()"></div>
           <div class="qtyrow">
             <div class="fld"><label>Full ${dept==='plastics'?'(pallets/boxes)':'(boxes)'}</label>
               <div class="biginput">
