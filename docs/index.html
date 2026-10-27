@@ -182,6 +182,14 @@ input,select{font-family:inherit;font-size:16px}
 .varbtn .varcode{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--dept)}
 .varbtn.missing{opacity:.6}
 .varbtn.missing .varcode{color:var(--ink-soft)}
+/* ship-out tab */
+.shipinfo{margin-top:10px;background:var(--dept-soft);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.shipinfo .si-code{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:800;font-size:14px;color:var(--dept)}
+.shipinfo .si-desc{font-size:14px;color:var(--ink);margin-top:2px}
+.shipinfo .si-per{font-size:11px;color:var(--ink-soft);font-weight:700;margin-top:3px}
+.shipinfo.unknown{background:#fff6ec;border-color:#f0d6ad}
+.shipqty{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.shipqlbl{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;margin:0 2px 10px}
 .fromnote{font-size:12px;color:var(--ink-soft);margin-top:8px}
 .stepbtn{flex:0 0 58px;border-radius:10px;background:var(--dept);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center;cursor:pointer}
 .stepbtn:active{filter:brightness(.92)}
@@ -212,6 +220,7 @@ input,select{font-family:inherit;font-size:16px}
 .kp-grid button.is-press,.calc-grid button.is-press,.kp-calc.is-press{filter:brightness(.82);transform:scale(.94)}
 /* leave room to scroll the active field above the docked pad */
 body.kp-open #count{padding-bottom:290px}
+body.kp-open #shipout{padding-bottom:290px}
 /* PIN pad on the sign-in / create-account / approvals screens — sits above the auth cards */
 .keypad.pinpad{z-index:90}
 body.pin-open #app{padding-bottom:320px}
@@ -395,8 +404,8 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .calc-hist .none{color:var(--ink-soft);font-size:12px}
 
 /* top view tabs (Move stock / Inventory) */
-.viewtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px 0}
-.viewtabs button{height:44px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-weight:800;font-size:14px;color:var(--ink-soft);cursor:pointer;transition:background .1s ease,color .1s ease,border-color .1s ease}
+.viewtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 16px 0}
+.viewtabs button{height:44px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-weight:800;font-size:13px;color:var(--ink-soft);cursor:pointer;transition:background .1s ease,color .1s ease,border-color .1s ease}
 .viewtabs button.on{background:var(--dept);border-color:var(--dept);color:#fff}
 .csc-logo{height:28px;width:auto;vertical-align:-7px;margin-right:8px;border-radius:4px}
 .topbtn{flex:0 0 auto;height:44px;min-width:44px;padding:0 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-size:20px;font-weight:800;color:var(--dept);cursor:pointer}
@@ -464,8 +473,9 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 
   <!-- top tabs: move stock  /  live inventory -->
   <div class="viewtabs" hidden>
-    <button type="button" id="tabMove" class="on" onclick="showView('move')">➕ Move stock</button>
+    <button type="button" id="tabMove" class="on" onclick="showView('move')">➕ Move</button>
     <button type="button" id="tabInv" onclick="showView('inventory')">📦 Inventory</button>
+    <button type="button" id="tabShip" onclick="showView('shipout')">🚚 Ship out</button>
   </div>
 
   <!-- COUNT -->
@@ -557,6 +567,65 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
     <div class="body">
       <input id="invFilter" class="invfilter" placeholder="filter by product or building" autocomplete="off" oninput="renderInventory()">
       <div id="invBody" class="invbody"></div>
+    </div>
+  </section>
+
+  <!-- SHIP OUT (record products shipped out: item # + lot # + pallets/loose) -->
+  <section id="shipout" hidden>
+    <div class="topbar">
+      <div class="title">
+        <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> <span>Ship out</span></div>
+        <div class="who" id="shipWho"></div>
+      </div>
+      <div class="count-badge"><b id="shipCount">0</b><small>shipped</small></div>
+    </div>
+    <div class="body">
+      <div class="scanbay">
+        <label>1 · Scan item number</label>
+        <div class="scan-input-wrap">
+          <span class="readout">›</span>
+          <input id="s_item" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 placeholder="scan or type item #, then Enter" onkeydown="shipItemEnter(event)">
+          <button type="button" class="search-x scan-x" id="s_itemX" onclick="shipClearItem()" aria-label="Clear">×</button>
+        </div>
+        <div id="s_itemInfo" class="shipinfo" hidden></div>
+      </div>
+
+      <div class="scanbay">
+        <label>2 · Scan lot number</label>
+        <div class="scan-input-wrap">
+          <span class="readout">›</span>
+          <input id="s_lot" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 placeholder="scan or type lot #, then Enter" onkeydown="shipLotEnter(event)">
+          <button type="button" class="search-x scan-x" id="s_lotX" onclick="document.getElementById('s_lot').value=''" aria-label="Clear">×</button>
+        </div>
+      </div>
+
+      <div class="shipqty">
+        <label class="shipqlbl">3 · Quantity shipped out</label>
+        <div class="qtyrow">
+          <div class="fld"><label>Pallets</label>
+            <div class="biginput">
+              <input id="s_pallets" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_pallets')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField('s_loose');}">
+            </div></div>
+          <div class="fld"><label>Loose</label>
+            <div class="biginput">
+              <input id="s_loose" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_loose')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();saveShipment();}">
+            </div></div>
+        </div>
+        <div class="total-strip"><span class="lbl">Total units shipped</span>
+          <span class="val"><span id="s_total">0</span><small>units</small></span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" onclick="shipClear()">Clear</button>
+        <button class="btn primary" id="s_save" onclick="saveShipment()">🚚 Record shipment</button>
+      </div>
+
+      <div class="recent">
+        <h3>Shipped this session</h3>
+        <div id="shipRecent"><div class="empty-recent">Recorded shipments will appear here after you save them.</div></div>
+      </div>
     </div>
   </section>
 
@@ -736,7 +805,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v71-typeselect';
+var APP_VERSION = 'v72-shipout';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1028,13 +1097,112 @@ function refreshInventory(){
 /* Switch between the Move-stock screen and the Live-inventory screen. */
 function showView(v){
   state.view = v;
-  const c=$('count'), inv=$('inventory');
-  if(c) c.hidden = (v==='inventory');
+  if(typeof kpHide==='function') kpHide();
+  if(typeof tkHide==='function') tkHide();
+  const c=$('count'), inv=$('inventory'), sh=$('shipout');
+  if(c) c.hidden = (v!=='move');
   if(inv) inv.hidden = (v!=='inventory');
-  const tm=$('tabMove'), ti=$('tabInv');
-  if(tm) tm.classList.toggle('on', v!=='inventory');
+  if(sh) sh.hidden = (v!=='shipout');
+  const tm=$('tabMove'), ti=$('tabInv'), ts=$('tabShip');
+  if(tm) tm.classList.toggle('on', v==='move');
   if(ti) ti.classList.toggle('on', v==='inventory');
-  if(v==='inventory') renderInventory(); else focusScan();
+  if(ts) ts.classList.toggle('on', v==='shipout');
+  if(v==='inventory'){ renderInventory(); }
+  else if(v==='shipout'){ const w=$('shipWho'); if(w) w.textContent=($('counterName')&&$('counterName').value)||''; renderShipRecent(); focusShipItem(); }
+  else { focusScan(); }
+}
+
+/* ---- Ship out: record products shipped out (item # + lot # + pallets/loose) ---- */
+var shipSession = [];                 // this-session shipments, newest first
+function focusShipItem(){ setTimeout(function(){ const el=$('s_item'); if(el) el.focus(); }, 60); }
+function shipItemEnter(e){ if(e.key!=='Enter') return; e.preventDefault(); shipLookup(); }
+function shipLookup(){
+  const raw=($('s_item').value||'').trim(); if(!raw){ return; }
+  const hit=IDXALL[norm(raw)];
+  state.ship = state.ship || {};
+  if(hit && isVariantSelector(hit.it)){
+    // a base "Check Value" code — needs a specific type before it can be shipped
+    showShipInfo(raw, 'Scan the specific item code (e.g. '+esc(raw)+'-K) — this one needs a type', 0, true);
+    state.ship.item=''; state.ship.desc=''; state.ship.per=0;
+    return;
+  }
+  if(hit){
+    state.ship.item = hit.it.code || raw;
+    state.ship.desc = hit.it.desc || '';
+    state.ship.per  = Number(hit.it.perUnit) || 0;
+    showShipInfo(state.ship.item, state.ship.desc, state.ship.per, false);
+  } else {
+    state.ship.item = raw; state.ship.desc=''; state.ship.per=0;
+    showShipInfo(raw, 'Not in the lookup — it will still be recorded', 0, true);
+  }
+  const lot=$('s_lot'); if(lot) setTimeout(function(){ lot.focus(); }, 40);
+}
+function showShipInfo(code, desc, per, unknown){
+  const box=$('s_itemInfo'); if(!box) return;
+  box.hidden=false;
+  box.className = 'shipinfo'+(unknown?' unknown':'');
+  box.innerHTML = '<div class="si-code">'+esc(code)+'</div>'
+    + '<div class="si-desc">'+esc(desc||'')+'</div>'
+    + (per>0 ? '<div class="si-per">'+per.toLocaleString()+' per pallet</div>' : '');
+  shipCalc();
+}
+function shipClearItem(){
+  state.ship=null;
+  const it=$('s_item'); if(it) it.value='';
+  const info=$('s_itemInfo'); if(info){ info.hidden=true; info.innerHTML=''; }
+  shipCalc(); focusShipItem();
+}
+function shipLotEnter(e){
+  if(e.key!=='Enter') return; e.preventDefault();
+  const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); if(el.select) el.select(); }
+}
+function shipCalc(){
+  const per=(state.ship&&state.ship.per)||0;
+  const pallets=asNum($('s_pallets')&&$('s_pallets').value), loose=asNum($('s_loose')&&$('s_loose').value);
+  const total=Math.round(pallets*per+loose);
+  const t=$('s_total'); if(t) t.textContent=total.toLocaleString();
+  return total;
+}
+function saveShipment(){
+  const item=(state.ship&&state.ship.item) || (($('s_item').value||'').trim());
+  if(!item){ toast('Scan an item number first','err'); focusShipItem(); return; }
+  const lot=($('s_lot').value||'').trim();
+  const per=(state.ship&&state.ship.per)||0;
+  const pallets=asNum($('s_pallets').value), loose=asNum($('s_loose').value);
+  if(pallets<=0 && loose<=0){ toast('Enter pallets or loose shipped','err'); const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); } return; }
+  const total=Math.round(pallets*per+loose);
+  const user=($('counterName')&&$('counterName').value||'').trim() || (AUTH&&AUTH.name) || '';
+  const payload={ user:user, item:item, desc:(state.ship&&state.ship.desc)||'', lot:lot,
+    pallets:pallets, loose:loose, unitsPerPallet:(per||''), total:total };
+  const btn=$('s_save'); if(btn){ btn.disabled=true; btn.textContent='Recording…'; }
+  kpHide();
+  callApi('logShipment',[payload]).then(function(r){
+    shipSession.unshift({ ts:nowTs(), item:item, desc:payload.desc, lot:lot, pallets:pallets, loose:loose, total:(r&&r.total)!=null?r.total:total });
+    renderShipRecent();
+    toast('Shipped '+(((r&&r.total)!=null?r.total:total)).toLocaleString()+' · '+item);
+    shipClear();
+  }).catch(function(e){ toast('Save failed — try again','err'); console.error(e); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='🚚 Record shipment'; } });
+}
+function shipClear(){
+  state.ship=null;
+  ['s_item','s_lot'].forEach(function(id){ const el=$(id); if(el) el.value=''; });
+  ['s_pallets','s_loose'].forEach(function(id){ const el=$(id); if(el) el.value='0'; });
+  const info=$('s_itemInfo'); if(info){ info.hidden=true; info.innerHTML=''; }
+  const t=$('s_total'); if(t) t.textContent='0';
+  kpHide(); focusShipItem();
+}
+function renderShipRecent(){
+  const c=$('shipCount'); if(c) c.textContent=shipSession.length;
+  const el=$('shipRecent'); if(!el) return;
+  if(!shipSession.length){ el.innerHTML='<div class="empty-recent">Recorded shipments will appear here after you save them.</div>'; return; }
+  el.innerHTML=shipSession.map(function(s){
+    return '<div class="entry"><div class="info">'
+      +'<div class="c">'+esc(s.item)+(s.lot?' · lot '+esc(s.lot):'')+'</div>'
+      +'<div class="d">'+esc(s.desc||'')+'</div>'
+      +'<div class="m">'+(Number(s.pallets)||0)+' pallets · '+(Number(s.loose)||0)+' loose</div></div>'
+      +'<div class="qty">'+(Number(s.total)||0).toLocaleString()+'<small>UNITS</small></div></div>';
+  }).join('');
 }
 // Compose the location from the building select + number box (also accepts typing "m03"/"mt12").
 function composeLoc(){
@@ -1902,14 +2070,14 @@ function scrollFieldUp(el, anchorSel){
 // single pointerdown (no mouse+touch double-firing) and edit whichever box is active.
 var activeNumField='f_full';
 var _kpFresh=false;   // when true, the next digit replaces the field (used for the row # box)
-function kpIsField(id){ return id==='f_per'||id==='f_full'||id==='f_extra'||id==='f_loc'||id==='rowNum'; }
+function kpIsField(id){ return id==='f_per'||id==='f_full'||id==='f_extra'||id==='f_loc'||id==='rowNum'||id==='s_pallets'||id==='s_loose'; }
 function kpShow(){ tkHide(); $('cardKeypad').classList.add('show'); $('cardKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('kp-open'); }
 function kpHide(){ kpBackStop(); $('cardKeypad').classList.remove('show'); $('cardKeypad').setAttribute('aria-hidden','true'); document.body.classList.remove('kp-open'); }
 function kpBind(id){
   if(!kpIsField(id)) return;
   activeNumField=id;
   _kpFresh = (id==='rowNum');   // start fresh: first digit replaces the old row number
-  const l=$('kpField'); if(l){ l.textContent=({f_per:'Per unit',f_full:'Full',f_extra:'Extra',f_loc:'Location #',rowNum:'Row #'})[id]; }
+  const l=$('kpField'); if(l){ l.textContent=({f_per:'Per unit',f_full:'Full',f_extra:'Extra',f_loc:'Location #',rowNum:'Row #',s_pallets:'Pallets',s_loose:'Loose'})[id]; }
   kpShow();
   const el=$(id); if(el){ setTimeout(()=>scrollFieldUp(el, id==='f_loc'?'.total-strip':null),40); } // keep it above the pad
 }
@@ -1942,7 +2110,9 @@ function kpAdvance(){
   if(activeNumField==='rowNum'){ const el=$('rowNum'); if(el) el.blur(); loadRow(); return; }
   if(activeNumField==='f_per'){ nextField('f_full'); }
   else if(activeNumField==='f_full'){ nextField('f_extra'); }
-  else if(activeNumField==='f_extra'){ nextField('f_loc'); }
+  else if(activeNumField==='f_extra'){ qtyNext(); }   // Loose done -> close pad, reveal To building
+  else if(activeNumField==='s_pallets'){ nextField('s_loose'); }      // ship out: Pallets -> Loose
+  else if(activeNumField==='s_loose'){ saveShipment(); }              // ship out: Loose -> record
   else { saveEntry(); }
 }
 /* press-and-hold backspace: one delete on tap, then rapid delete while held */
