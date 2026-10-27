@@ -726,7 +726,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v69-checkvalues';
+var APP_VERSION = 'v70-checkvalues';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1700,12 +1700,15 @@ function selectItem(it, edit){
   const inputVal = v => isCheckValue(v) ? '' : (v||'');
   const inputPh  = v => isCheckValue(v) ? 'enter value' : '';
 
-  // Per Pallet/Box (plastics column D, also metals Per Pallet) can be a check value — e.g. a cell
-  // marked INPUT or !!!ADD!!! means the per-unit count is not fixed and the counter must enter it.
-  // When so, show the field empty with the prompt instead of printing the sentinel as a number.
-  const perIsCheck = isCheckValue(it.perUnit);
+  // Per Pallet/Box (plastics column D, also metals Per Pallet) can be a check value — the cell holds
+  // an instruction instead of a number, meaning the counter must enter the per-unit by hand. Since
+  // this column is only ever a number or an instruction, treat ANY non-numeric, non-blank cell as a
+  // check value (INPUT, !!!ADD!!!, "verify", a note…) and surface its text as the prompt.
+  const perRawStr  = (it.perUnit==null ? '' : String(it.perUnit)).trim();
+  const perIsNum   = perRawStr!=='' && isFinite(Number(perRawStr.replace(/,/g,'')));
+  const perIsCheck = perRawStr!=='' && !perIsNum;
   const perValStr  = perIsCheck ? '' : (it.perUnit??'');
-  const perPh      = perIsCheck ? (checkPrompt(it.perUnit)||'enter value')
+  const perPh      = perIsCheck ? (checkPrompt(it.perUnit) || perRawStr)
                                 : (dept==='plastics' ? 'per pallet / box' : 'per pallet');
 
   // Count-by-row can pre-fill a new card with the last count's location + full/extra split.
