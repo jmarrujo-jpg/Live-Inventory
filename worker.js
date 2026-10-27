@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v15-users' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v16-shipments' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -76,6 +76,7 @@ async function handle(fn, args, env) {
   if (fn === 'getBuildings') return getBuildings(env); // reads the Movements workbook's Buildings tab
   if (fn === 'getMovements') return getMovements(env); // reads back the Movements log (per-building deltas)
   if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
+  if (fn === 'logShipment') return logShipment(env, args[0]); // writes a shipped-out row to the Shipments tab
   if (fn === 'getUsers') return getUsers(env);                // approved users for the sign-in dropdown (no PINs)
   if (fn === 'signupUser') return signupUser(env, args[0]);   // create a pending account
   if (fn === 'authUser') return authUser(env, args[0], args[1]); // verify name + PIN
@@ -194,6 +195,34 @@ async function logMovement(env, m) {
   ];
   await sheets.appendEnsuring(MOVEMENTS_TAB, row, MOVEMENTS_HEADER);
   return { movementId: id, loggedAt: loggedAt, qtyEach: qtyEach, flags: flags };
+}
+
+// Shipments tab — records products shipped OUT: item #, lot #, pallets + loose. Its own log in the
+// Movements workbook, auto-created on first write. Written by position (this order is the contract).
+const SHIPMENTS_TAB = 'Shipments';
+const SHIPMENTS_HEADER = [
+  'Shipment ID', 'Logged At', 'Event Date', 'User', 'Item #', 'Description', 'Lot #',
+  'Pallets', 'Loose', 'Units Per Pallet', 'Total Units', 'Note',
+];
+async function logShipment(env, s) {
+  s = s || {};
+  if (!str_(s.item)) throw new Error('Missing item number');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const when = new Date();
+  const loggedAt = when.toISOString();
+  const pallets = (s.pallets === '' || s.pallets == null || isNaN(Number(s.pallets))) ? 0 : Number(s.pallets);
+  const loose = (s.loose === '' || s.loose == null || isNaN(Number(s.loose))) ? 0 : Number(s.loose);
+  const perPallet = (s.unitsPerPallet === '' || s.unitsPerPallet == null || isNaN(Number(s.unitsPerPallet))) ? '' : Number(s.unitsPerPallet);
+  const total = (s.total != null && s.total !== '' && !isNaN(Number(s.total)))
+    ? Math.round(Number(s.total))
+    : Math.round(pallets * (Number(perPallet) || 0) + loose);
+  const id = 'SH-' + when.getTime().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const row = [
+    id, loggedAt, str_(s.eventDate) || loggedAt.slice(0, 10), str_(s.user), str_(s.item), str_(s.desc), str_(s.lot),
+    pallets, loose, perPallet, total, str_(s.note),
+  ];
+  await sheets.appendEnsuring(SHIPMENTS_TAB, row, SHIPMENTS_HEADER);
+  return { shipmentId: id, loggedAt: loggedAt, total: total };
 }
 
 // Read the Movements log back so the app can stack movements onto the counted baseline and show a
