@@ -9,12 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#E9EAEC; --panel:#FBFBFC; --ink:#161A1F; --ink-soft:#5A626C; --line:#D2D6DB;
-  --metal:#2C3E50; --metal-accent:#E8A21A; --metal-soft:#EEF1F4;
-  --plastic:#0E7C6E; --plastic-accent:#12B3A0; --plastic-soft:#E4F3F1;
-  --danger:#C0392B; --ok:#2E7D48;
+  /* One standard palette — navy accent from the logo; no per-category color switching. */
+  --paper:#eef1f6; --panel:#ffffff; --ink:#131b2e; --ink-soft:#6b7280; --line:#dfe3ea;
+  --accent:#0f2350; --accent-dark:#0a1836; --accent-soft:#e5eaf3;
+  --metal:#0f2350; --metal-accent:#b45309; --metal-soft:#e5eaf3;
+  --plastic:#0f2350; --plastic-accent:#b45309; --plastic-soft:#e5eaf3;
+  --danger:#b23b3b; --ok:#0f7a3d;
   --radius:14px; --tap:60px;
-  --dept:#2C3E50; --dept-accent:#E8A21A; --dept-soft:#EEF1F4; --dept-ink:#fff;
+  --dept:#0f2350; --dept-accent:#b45309; --dept-soft:#e5eaf3; --dept-ink:#fff;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -25,6 +27,18 @@ body{
 }
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
 .hide{display:none!important}
+[hidden]{display:none!important}   /* keep the `hidden` attribute reliable even on flex/grid rows */
+/* Yes/No segmented control (e.g. "Staged for shipping?") */
+.yesno{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.yesno button{height:50px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:800;font-size:15px;color:var(--ink-soft);cursor:pointer;transition:border-color .1s ease,background .1s ease,color .1s ease}
+.yesno button.on{border-color:var(--dept);background:var(--dept-soft);color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+/* Guided card stepper — each step reveals after the previous is answered */
+.step{grid-column:1/-1;margin-top:4px}
+.qtyrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.steplbl{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;margin:2px 0 9px}
+.steplbl .fromhelp{margin-left:2px}
+.stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--dept);color:#fff;font-size:12px;font-weight:800;flex:0 0 auto}
+.stepnext{width:100%;height:52px;margin-top:12px}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select{font-family:inherit;font-size:16px}
 
@@ -35,6 +49,7 @@ input,select{font-family:inherit;font-size:16px}
 #landing{flex:1;display:flex;flex-direction:column;padding:26px 20px 22px}
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
 .brand .dot{width:14px;height:14px;border-radius:3px;background:var(--metal-accent);box-shadow:3px 3px 0 var(--plastic-accent)}
+.brand .logo{width:auto;height:34px;max-width:120px;flex:none;object-fit:contain}
 .brand h1{font-family:'Archivo';font-weight:900;font-size:20px;letter-spacing:-.02em;margin:0}
 .brand span{color:var(--ink-soft);font-size:13px;font-weight:500}
 .tagline{color:var(--ink-soft);font-size:14px;margin:2px 0 26px 26px}
@@ -81,6 +96,12 @@ input,select{font-family:inherit;font-size:16px}
 .seg button{flex:1;padding:12px;border-radius:9px;font-weight:700;font-size:15px;color:var(--ink-soft)}
 .seg button.on{background:var(--dept);color:#fff}
 
+/* "building you're in" bar above the scanner */
+.bldgbar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.bldgbar .bldglbl{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.bldgbar select{flex:1;height:48px;border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:0 12px;font-size:16px;font-weight:700;color:var(--dept)}
+.bldgbar select:focus{border-color:var(--dept);outline:none}
+
 /* scan bay - signature element */
 .scanbay{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;
   box-shadow:0 2px 0 var(--line)}
@@ -89,10 +110,11 @@ input,select{font-family:inherit;font-size:16px}
 .scan-input-wrap .readout{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--dept-accent);
   font-family:'JetBrains Mono';font-weight:700;pointer-events:none;opacity:.5}
 #scanInput{width:100%;height:var(--tap);border:2px solid var(--dept);border-radius:11px;background:#fff;
-  padding:0 16px 0 40px;font-family:'JetBrains Mono';font-weight:700;font-size:22px;letter-spacing:.02em;color:var(--ink);outline:none}
+  padding:0 46px 0 40px;font-family:'JetBrains Mono';font-weight:700;font-size:22px;letter-spacing:.02em;color:var(--ink);outline:none}
 #scanInput:focus{box-shadow:0 0 0 4px var(--dept-soft)}
+.scan-x{position:absolute;right:8px;top:50%;transform:translateY(-50%)}
 .scan-hint{margin-top:8px;font-size:13px;color:var(--ink-soft);display:flex;justify-content:space-between;align-items:center;gap:10px}
-.linkbtn{color:var(--dept);font-weight:700;font-size:13px;text-decoration:underline;text-underline-offset:2px}
+.linkbtn{color:var(--dept);font-weight:700;font-size:13px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 
 /* search dropdown */
 .search-wrap{position:relative}
@@ -100,7 +122,7 @@ input,select{font-family:inherit;font-size:16px}
 #searchInput:focus{border-color:var(--dept)}
 .results{position:absolute;left:0;right:0;top:56px;z-index:9;background:#fff;border:1px solid var(--line);
   border-radius:12px;box-shadow:0 16px 34px rgba(20,26,31,.18);max-height:44vh;overflow:auto}
-.results .row{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.results .row{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px;cursor:pointer}
 .results .row:last-child{border-bottom:none}
 .results .row:active{background:var(--dept-soft)}
 .results .row .code{font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:var(--dept)}
@@ -121,13 +143,96 @@ input,select{font-family:inherit;font-size:16px}
 .fld.full{grid-column:1/-1}
 .fld label{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.02em;display:flex;justify-content:space-between}
 .fld label .tag{font-weight:600;font-size:10px;background:var(--dept-soft);color:var(--dept);padding:1px 6px;border-radius:5px}
-.fld input,.fld select{height:52px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;width:100%;outline:none}
-.fld select{font-weight:600}
-.fld input:focus,.fld select:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
-.prodflag{grid-column:1/-1;background:#FFF6E6;border:1px solid #F0D399;color:#B26A00;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:12px}
+.fld label .checktag{font-weight:700;font-size:10px;background:#fdecd2;color:#b45309;padding:1px 7px;border-radius:5px;letter-spacing:.04em;text-transform:uppercase}
+.fld input{height:52px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;width:100%;outline:none}
+.fld input:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
 .fld input.mono{font-family:'JetBrains Mono';font-weight:600}
 .fld input.big{height:60px;font-size:24px;font-weight:700;text-align:center;font-family:'JetBrains Mono'}
-.fld input[readonly]{background:var(--dept-soft);border-color:transparent;color:var(--dept);font-weight:700}
+
+/* number box + on-screen advance button (mobile numeric keypads have no Enter key) */
+.biginput,.locrow{display:flex;gap:8px;align-items:stretch}
+.biginput input,.locrow input{flex:1;min-width:0}
+.locrow select{flex:0 0 108px;border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:0 8px;font-size:15px;color:var(--ink);height:52px}
+.locrow select:focus{border-color:var(--dept);outline:none}
+/* clean card dropdowns (To building) — native select restyled with a chevron */
+.fld select{-webkit-appearance:none;appearance:none;height:52px;width:100%;border:1.5px solid var(--line);border-radius:10px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;
+  padding:0 42px 0 14px;font-size:16px;font-weight:700;color:var(--dept);outline:none}
+.fld select:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+/* From-building tiles — only buildings holding this product, plus its Production point */
+.frombox label{margin-bottom:2px}
+.fromhelp{font-weight:600;color:var(--ink-soft);text-transform:none;letter-spacing:0}
+.frombldgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.frombtn{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;padding:10px 12px;border:1.5px solid var(--line);
+  border-radius:12px;background:#fff;cursor:pointer;transition:transform .06s ease,border-color .1s ease,box-shadow .1s ease}
+.frombtn:active{transform:scale(.97)}
+.frombtn .fb-name{font-weight:800;font-size:15px;color:var(--ink);line-height:1.1}
+.frombtn .fb-sub{font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.01em}
+.frombtn.on{border-color:var(--dept);background:var(--dept-soft);box-shadow:0 0 0 3px var(--dept-soft)}
+.frombtn.on .fb-name{color:var(--dept)}
+.frombtn.prod{border-style:dashed}
+.frombtn.prod .fb-sub{color:#B26A00}
+.fromnote{font-size:12px;color:var(--ink-soft);margin-top:8px}
+.stepbtn{flex:0 0 58px;border-radius:10px;background:var(--dept);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center;cursor:pointer}
+.stepbtn:active{filter:brightness(.92)}
+.stepbtn.ok{background:var(--ok)}
+.fld input.rodisp[readonly]{background:var(--dept-soft);border-color:transparent;color:var(--dept);font-weight:700}
+/* docked number pad — slides up from the bottom like a native keyboard, only while a count box
+   (Full/Extra/Location) is active. iOS won't summon its own keyboard on the programmatic focus
+   after a scan, so those boxes use inputmode=none and this pad instead. */
+.keypad{position:fixed;left:0;right:0;bottom:0;z-index:75;background:#e9ebee;border-top:1px solid #c7ccd1;touch-action:none;-webkit-user-select:none;user-select:none;
+  padding:7px 8px calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 24px rgba(20,26,31,.16);
+  transform:translateY(115%);transition:transform .2s ease;will-change:transform}
+.keypad.show{transform:translateY(0)}
+.kp-target{font-family:'JetBrains Mono';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:2px 4px 7px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:460px;margin-left:auto;margin-right:auto}
+.kp-target b{color:var(--dept)}
+.kp-calc{border:1px solid var(--dept);border-radius:8px;background:#fff;color:var(--dept);font-family:'JetBrains Mono';
+  font-weight:800;font-size:12px;letter-spacing:.06em;padding:6px 12px;cursor:pointer;touch-action:manipulation}
+.kp-calc:active{background:var(--dept-soft)}
+.kp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:460px;margin:0 auto}
+.kp-grid button{height:52px;border:1px solid #c7ccd1;border-radius:9px;background:#fff;color:var(--ink);
+  font-family:'JetBrains Mono';font-weight:800;font-size:23px;display:grid;place-items:center;cursor:pointer;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;box-shadow:0 1px 0 #b8bec4}
+.kp-grid button:active{background:var(--dept-soft);border-color:var(--dept)}
+.kp-grid button.kp-back{color:var(--ink-soft);font-size:21px}
+.kp-grid button.kp-go{background:var(--ok);border-color:var(--ok);color:#fff;font-size:19px;box-shadow:none}
+/* pressed-button feedback (darken + slight shrink) for every keypad/calculator key */
+.kp-grid button,.calc-grid button,.kp-calc{transition:filter .06s ease,transform .06s ease}
+.kp-grid button.is-press,.calc-grid button.is-press,.kp-calc.is-press{filter:brightness(.82);transform:scale(.94)}
+/* leave room to scroll the active field above the docked pad */
+body.kp-open #count{padding-bottom:290px}
+/* PIN pad on the sign-in / create-account / approvals screens — sits above the auth cards */
+.keypad.pinpad{z-index:90}
+body.pin-open #app{padding-bottom:320px}
+/* alphanumeric keyboard (check-value prompt, Weight, Type) — sits above the modal (z 80) */
+.tkeypad{z-index:90}
+.tk-grid{max-width:500px;margin:0 auto}
+.tk-row{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+/* fixed-width keys so shorter rows stay aligned (a 10-column grid, like a real keyboard) */
+.tk-grid button{flex:0 0 calc((100% - 54px)/10);height:44px;border:1px solid #c7ccd1;border-radius:7px;background:#fff;color:var(--ink);
+  font-family:'JetBrains Mono';font-weight:700;font-size:17px;display:grid;place-items:center;cursor:pointer;padding:0;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;box-shadow:0 1px 0 #b8bec4;transition:filter .06s ease,transform .06s ease}
+.tk-grid button:active{background:var(--dept-soft);border-color:var(--dept)}
+.tk-grid button.is-press{filter:brightness(.82);transform:scale(.94)}
+.tk-grid button.tk-back{flex:0 0 calc(((100% - 54px)/10)*1.6 + 6px);color:var(--ink-soft);font-size:19px}
+/* bottom utility row: symbols + wide space + Done (flex, not the fixed 10-col grid) */
+.tk-row.tk-util button{flex:1 1 0}
+.tk-row.tk-util .tk-wide{flex:4 1 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.tk-row.tk-util .tk-go{flex:2 1 0;background:var(--ok);border-color:var(--ok);color:#fff;font-size:13px;letter-spacing:.05em;text-transform:uppercase}
+body.tk-open #count{padding-bottom:340px}
+body.tk-open .modal:not(.hide){justify-content:flex-start}
+body.tk-open .modal-card{margin-top:12px;margin-bottom:12px}
+/* landscape / short screens: shrink the docked pads so they don't swallow the whole viewport */
+@media (orientation:landscape) and (max-height:560px){
+  .kp-grid button{height:40px;font-size:19px}
+  .kp-target{margin-bottom:4px}
+  .tk-grid button{height:34px;font-size:15px}
+  .tk-row{margin-bottom:4px}
+  .keypad{padding-top:5px}
+  body.kp-open #count{padding-bottom:210px}
+  body.tk-open #count{padding-bottom:250px}
+}
 
 .total-strip{grid-column:1/-1;background:var(--dept);color:#fff;border-radius:11px;padding:12px 16px;
   display:flex;justify-content:space-between;align-items:center;margin:2px 0 12px}
@@ -140,20 +245,68 @@ input,select{font-family:inherit;font-size:16px}
 .btn.primary{background:var(--dept);color:#fff}
 .btn.primary:active{filter:brightness(.92)}
 .btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);flex:0 0 96px}
+/* mode switch (Scan item / Count by row) at the top of the count screen */
+.modeseg{display:flex;gap:6px;margin:0 0 10px;padding:4px;background:#e9ebee;border-radius:12px}
+.modeseg button{flex:1;height:42px;border:0;border-radius:9px;background:transparent;color:var(--ink-soft);
+  font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.modeseg button.on{background:#fff;color:var(--dept);box-shadow:0 1px 3px rgba(20,26,31,.12)}
+/* "last counted here" hint on the card */
+.loghint{background:var(--dept-soft);border:1px solid transparent;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.35;color:var(--ink)}
+.loghint.warn{background:#FFF8E6;border-color:var(--metal-accent)}
+.loghint .lh-i{margin-right:4px}
+.loghint .lh-bd{color:var(--ink-soft);font-weight:600}
+.loghint .lh-note{font-size:11px;color:var(--ink-soft);font-weight:600}
+.loghint b.up{color:#1b7f3b} .loghint b.down{color:#c0392b}
+/* Count-by-row panel */
+.rowpanel{margin:2px 0 6px}
+.rowpick label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin:0 2px 5px}
+.rowpick .locrow{display:flex;gap:8px}
+.rowpick select{flex:0 0 128px;height:52px;border:1.5px solid var(--line);border-radius:10px;padding:0 8px;background:#fff}
+.rowpick input{flex:1;height:52px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;background:#fff}
+.rowpick .rowgo{flex:0 0 88px;height:52px}
+.rowstep{display:flex;gap:8px;margin-top:8px}
+.rowstep .btn{flex:1;height:46px;font-family:'JetBrains Mono';font-weight:800;font-size:15px}
+.rowstep .rowcalc{flex:0 0 56px;font-size:20px}
+.rowinfo{margin:12px 2px 8px}
+.rowhdr{font-size:13px;color:var(--ink)}
+.rowhint{font-size:13px;color:var(--ink-soft);background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.rowhint.warn{background:#FFF8E6;border-color:var(--metal-accent);color:var(--ink)}
+.rowlist{display:flex;flex-direction:column;gap:8px}
+.rowitem{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.rowitem.done{background:var(--dept-soft);border-color:transparent}
+.ri-main{flex:1;min-width:0}
+.ri-name{font-weight:800;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-sub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.ri-btns{display:flex;gap:6px;flex:0 0 auto}
+.ri-done{font-weight:800;color:var(--dept);font-family:'JetBrains Mono';font-size:14px;flex:0 0 auto}
+.btn.tiny{flex:0 0 auto;height:38px;min-width:52px;padding:0 12px;border-radius:9px;font-size:14px;font-weight:800;
+  border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+.btn.tiny.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.tiny.x{flex:0 0 40px;min-width:40px;color:var(--ink-soft)}
+.rowadd{margin-top:4px;width:100%}
 
 /* recent list */
 .recent{margin-top:2px}
 .recent h3{font-size:13px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;
   display:flex;justify-content:space-between;align-items:center;margin:4px 2px 10px}
-.recent h3 .exp{color:var(--dept);text-decoration:underline;text-underline-offset:2px;font-size:12px}
+.recent h3 .acts{display:flex;gap:14px}
+.recent h3 .exp{color:var(--dept);text-decoration:underline;text-underline-offset:2px;font-size:12px;cursor:pointer}
 .entry{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px;
   display:flex;align-items:center;gap:12px}
 .entry .info{flex:1;min-width:0}
 .entry .info .c{font-family:'JetBrains Mono';font-size:12px;color:var(--dept);font-weight:700}
 .entry .info .d{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry .info .m{font-size:11px;color:var(--ink-soft);margin-top:1px}
+.entry .info .loc{font-size:12px;color:var(--dept);font-weight:700;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry .qty{font-family:'JetBrains Mono';font-weight:800;font-size:18px;text-align:right;flex:none}
 .entry .qty small{display:block;font-size:9px;color:var(--ink-soft);letter-spacing:.08em}
+.entry .editbtn{flex:none;width:40px;height:40px;border-radius:9px;background:var(--dept-soft);color:var(--dept);
+  font-size:17px;display:grid;place-items:center;cursor:pointer}
+.entry .editbtn:active{filter:brightness(.94)}
+.btn.danger{background:transparent;border:1.5px solid #E4B4AB;color:var(--danger);flex:0 0 auto;padding:0 16px}
+.cardDel{position:absolute;top:12px;right:14px;background:rgba(255,255,255,.16);color:#fff;font-weight:700;
+  font-size:13px;padding:6px 12px;border-radius:8px;cursor:pointer}
+.card-head{position:relative}
 .empty-recent{color:var(--ink-soft);font-size:14px;text-align:center;padding:24px 0;border:1px dashed var(--line);border-radius:12px}
 
 /* toast */
@@ -165,73 +318,209 @@ input,select{font-family:inherit;font-size:16px}
 
 .notfound{background:#FFF4F1;border:1px solid #F3C6BC;color:#8a2d1c;border-radius:12px;padding:14px 16px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
 .notfound b{color:var(--danger)}
+.nf-add{display:block;height:44px;padding:0 18px;margin-top:12px;font-size:15px}
 
 /* build/version tag */
 .buildtag{position:fixed;right:8px;bottom:6px;z-index:60;font-family:'JetBrains Mono',ui-monospace,monospace;
   font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);opacity:.55;pointer-events:none}
 
+/* fields that still need a manual entry */
+.fld input.need{border-color:var(--metal-accent);background:#FFF8E6;box-shadow:0 0 0 3px rgba(232,162,26,.18)}
+
+/* freeze the page behind an open calculator/modal (the overlay scrolls itself if it's tall) */
+/* Freeze the page WITHOUT moving it: body is pinned at its current offset (top set from JS). */
+html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+/* check-value prompt modal */
+.modal{position:fixed;inset:0;z-index:80;background:rgba(20,26,31,.5);display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;padding:20px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* margin:auto centers the card when it fits, but lets it scroll from the top when it's taller than the screen */
+.modal-card{background:var(--panel);border-radius:var(--radius);width:100%;max-width:380px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);margin:auto 0}
+.modal-title{font-family:'Archivo';font-weight:900;font-size:22px;color:var(--dept);letter-spacing:-.01em}
+.modal-hint{color:var(--ink-soft);font-size:13px;margin:6px 0 14px}
+#modalInput{width:100%;height:var(--tap);border:2px solid var(--dept);border-radius:11px;background:#fff;padding:0 16px;
+  font-family:'JetBrains Mono';font-weight:700;font-size:22px;letter-spacing:.02em;color:var(--ink);outline:none}
+#modalInput:focus{box-shadow:0 0 0 4px var(--dept-soft)}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.modal-actions .btn{height:52px}
+/* department Append/Delete gate */
+.gate-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.gate-actions .btn{width:100%;height:56px;flex:none}
+.gate-warn{background:#FDECEA;border:1px solid #E4B4AB;color:#8a2b1e;padding:12px 14px;border-radius:11px;font-size:14.5px;line-height:1.45;margin:2px 0 2px}
+.gate-warn b{color:#7a1e12}
+
+/* clear (X) button inside the search field */
+.search-field{position:relative}
+.search-field #searchInput{padding-right:44px}
+.search-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;border-radius:50%;
+  background:var(--line);color:var(--ink-soft);font-size:20px;line-height:1;display:none;place-items:center;cursor:pointer}
+.search-x.show{display:grid}
+.search-x:active{filter:brightness(.9)}
+
+.ico-calc{display:inline-block;vertical-align:middle}
+.kp-calc .ico-calc{width:15px;height:15px;margin-right:5px;margin-top:-2px}
+
+/* calculator modal */
+.calc-card{max-width:340px}
+.calc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calc-x{border:none;background:none;font-size:28px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:0 4px}
+#calcDisplay{width:100%;height:54px;border:2px solid var(--line);border-radius:11px;background:#fff;padding:0 14px;text-align:right;
+  font-family:'JetBrains Mono';font-weight:700;font-size:22px;color:var(--ink);outline:none}
+#calcDisplay:focus{border-color:var(--dept)}
+.calc-result{text-align:right;font-family:'JetBrains Mono';font-weight:800;font-size:30px;color:var(--dept);min-height:38px;margin:6px 2px}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.calc-grid button{height:54px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);
+  font-family:'JetBrains Mono';font-weight:800;font-size:22px;display:grid;place-items:center;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.calc-grid button:active{background:var(--dept-soft);border-color:var(--dept)}
+.calc-grid button.op{color:var(--dept)}
+.calc-grid button.eq{background:var(--dept);border-color:var(--dept);color:#fff}
+.calc-grid button.clr{color:#b23b3b}
+.calc-use{margin-top:10px}
+.calc-use .btn{width:100%;height:50px}
+.calc-hist{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.calc-hist .lbl{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+.calc-hist .h{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:9px;background:var(--dept-soft);
+  margin-bottom:5px;cursor:pointer;font-family:'JetBrains Mono';font-size:13px}
+.calc-hist .h .ex{color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calc-hist .h .rv{color:var(--dept);font-weight:800}
+.calc-hist .none{color:var(--ink-soft);font-size:12px}
+
+/* top view tabs (Move stock / Inventory) */
+.viewtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px 0}
+.viewtabs button{height:44px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-weight:800;font-size:14px;color:var(--ink-soft);cursor:pointer;transition:background .1s ease,color .1s ease,border-color .1s ease}
+.viewtabs button.on{background:var(--dept);border-color:var(--dept);color:#fff}
+.csc-logo{height:28px;width:auto;vertical-align:-7px;margin-right:8px;border-radius:4px}
+.topbtn{flex:0 0 auto;height:44px;min-width:44px;padding:0 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--panel);font-size:20px;font-weight:800;color:var(--dept);cursor:pointer}
+.topbtn:active{transform:scale(.96)}
+/* live inventory list */
+.invfilter{height:48px;width:100%;border:1.5px solid var(--line);border-radius:11px;background:#fff;padding:0 14px;font-size:16px;outline:none;margin-bottom:12px}
+.invfilter:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+.invbody{display:flex;flex-direction:column;gap:14px}
+.inv-empty{color:var(--ink-soft);text-align:center;padding:34px 10px;font-size:14px}
+.inv-b{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.inv-bh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 14px;background:var(--dept-soft);border-bottom:1px solid var(--line)}
+.inv-bn{font-family:'Archivo';font-weight:900;font-size:17px;color:var(--dept);letter-spacing:-.01em}
+.inv-prod{font-family:inherit;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#B26A00;background:#FFF3DC;padding:1px 6px;border-radius:6px;margin-left:6px}
+.inv-unmapped{font-family:inherit;font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#b23b3b;background:#fde8e8;padding:1px 6px;border-radius:6px;margin-left:6px}
+.inv-b.staged .inv-bh{background:#EAF3FB;border-bottom-color:#cfe2f2}
+.inv-b.staged .inv-bn{color:#1b6fb3}
+.inv-bt{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap}
+.inv-rows{display:flex;flex-direction:column}
+.inv-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line)}
+.inv-row:first-child{border-top:none}
+.inv-p{display:flex;flex-direction:column;gap:1px;min-width:0}
+.inv-p b{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink)}
+.inv-p .inv-d{font-size:12px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-q{font-family:'JetBrains Mono';font-weight:800;font-size:16px;color:var(--dept);white-space:nowrap}
+/* ---- accounts: sign-in / create / approvals ---- */
+#login,#signup,#approvals{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 48px}
+.authcard{width:100%;max-width:430px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px 20px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(15,35,80,.07)}
+.auth-logo{height:56px;width:auto;align-self:center;margin-bottom:10px}
+.auth-h1{font-family:'Archivo';font-weight:900;font-size:26px;letter-spacing:-.02em;text-align:center;margin:0 0 4px;color:var(--ink)}
+.auth-sub{text-align:center;color:var(--ink-soft);font-size:13px;margin:0 0 12px;line-height:1.4}
+.auth-lbl{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin:12px 0 6px}
+.authinput,.authselect,.authpin{height:52px;border:1.5px solid var(--line);border-radius:11px;padding:0 14px;background:#fff;font-size:16px;outline:none;width:100%}
+.authinput:focus,.authselect:focus,.authpin:focus{border-color:var(--dept);box-shadow:0 0 0 3px var(--dept-soft)}
+.authselect{-webkit-appearance:none;appearance:none;font-weight:700;color:var(--dept);padding-right:42px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center}
+.authpin{font-family:'JetBrains Mono';font-size:24px;font-weight:800;letter-spacing:.5em;text-align:center}
+.authbtn{width:100%;height:54px;margin-top:18px;font-size:16px}
+.auth-links{display:flex;justify-content:space-between;gap:12px;margin-top:16px;flex-wrap:wrap}
+.auth-links .linkbtn{font-weight:700;color:var(--dept)}
+.auth-msg{margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--danger);min-height:18px}
+.auth-msg.ok{color:var(--ok)}
+.pendinglist{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.pinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pinfo b{font-size:15px;color:var(--ink)}
+.pinfo span{font-size:12px;color:var(--ink-soft)}
+.prow button{height:40px;padding:0 16px;font-size:14px;flex:0 0 auto}
+/* signed-in bar */
+#userbar{display:flex;align-items:center;gap:12px;padding:10px 16px 0}
+.logoutbtn{height:38px;padding:0 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--panel);font-weight:800;font-size:13px;color:var(--dept);cursor:pointer}
+.logoutbtn:active{transform:scale(.97)}
+.whoami{font-size:13px;color:var(--ink-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whoami b{color:var(--ink);font-size:14px}
 @media (min-width:560px){ .dept-card .sub{max-width:60%} }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- LANDING -->
-  <section id="landing">
-    <div class="brand">
-      <div class="dot"></div>
-      <h1>CSC Live Inventory</h1>
-    </div>
-    <p class="tagline">Pick a department, scan, then move stock.</p>
-    <div class="choose">
-      <button class="dept-card metals" onclick="openDept('metals')">
-        <svg class="glyph" width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 7h12M6 17h12"/></svg>
-        <span class="eyebrow">Dept 01 — Cans &amp; Ends</span>
-        <div><h2>Metals</h2><div class="sub">Scan a label, count cans and ends separately.</div></div>
-        <span class="go">Start scanning →</span>
-      </button>
-      <button class="dept-card plastics" onclick="openDept('plastics')">
-        <svg class="glyph" width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M5 8h14M9 5h6l1 3H8l1-3z"/></svg>
-        <span class="eyebrow">Dept 02 — Pails · Tubs · Lids</span>
-        <div><h2>Plastics</h2><div class="sub">Scan an item number to count all plastics.</div></div>
-        <span class="go">Start scanning →</span>
-      </button>
-    </div>
-    <div class="landing-foot" id="landingFoot">Loading item lists…</div>
-  </section>
+  <!-- signed-in bar (logout top-left, name to its right) -->
+  <div id="userbar" hidden>
+    <button type="button" class="logoutbtn" onclick="logout()">⤶ Logout</button>
+    <div class="whoami">Signed in: <b id="userName"></b><span id="userRole"></span></div>
+  </div>
+
+  <!-- top tabs: move stock  /  live inventory -->
+  <div class="viewtabs" hidden>
+    <button type="button" id="tabMove" class="on" onclick="showView('move')">➕ Move stock</button>
+    <button type="button" id="tabInv" onclick="showView('inventory')">📦 Inventory</button>
+  </div>
 
   <!-- COUNT -->
-  <section id="count">
+  <section id="count" hidden>
     <div class="topbar">
-      <button class="back" onclick="goHome()" aria-label="Back">←</button>
       <div class="title">
-        <div class="dpt" id="deptTitle">Metals</div>
-        <div class="who">Counter: <input id="counterName" placeholder="your name" autocomplete="off"></div>
+        <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> <span id="deptTitle">Live inventory</span></div>
+        <div class="who" id="whoName"></div>
       </div>
-      <div class="count-badge"><b id="sessCount">0</b><small>entries</small></div>
+      <input id="counterName" type="hidden">
+      <div class="count-badge"><b id="sessCount">0</b><small>moves</small></div>
     </div>
 
     <div class="body">
+      <div class="modeseg hide" id="modeSeg">
+        <button type="button" id="modeScan" class="on" onclick="setMode('scan')">🔍 Scan item</button>
+        <button type="button" id="modeRow" onclick="setMode('row')">▦ Count by row</button>
+      </div>
       <div class="seg hide" id="metalSeg">
         <button id="segEnds" class="on" onclick="setMetalKind('ends')">Ends</button>
         <button id="segCans" onclick="setMetalKind('cans')">Cans</button>
       </div>
 
-      <div class="scanbay">
+      <div class="bldgbar" id="bldgBar">
+        <span class="bldglbl">From building</span>
+        <select id="topBldg" onchange="setBuilding(this.value)"></select>
+      </div>
+
+      <div class="scanbay" id="scanbay">
         <label id="scanLabel">Scan barcode</label>
         <div class="scan-input-wrap">
           <span class="readout">›</span>
           <input id="scanInput" inputmode="text" autocomplete="off" autocapitalize="characters"
                  spellcheck="false" placeholder="scan or type code, then Enter">
+          <button type="button" class="search-x scan-x" id="scanX" onclick="clearScan()" aria-label="Clear scan">×</button>
         </div>
         <div class="scan-hint">
           <span id="scanCountHint"></span>
           <span class="linkbtn" onclick="toggleSearch()" id="searchToggle">Search by description</span>
         </div>
         <div class="search-wrap hide" id="searchWrap" style="margin-top:10px">
-          <input id="searchInput" placeholder="type any part of the description or code" autocomplete="off">
+          <div class="search-field">
+            <input id="searchInput" placeholder="type any part of the description or code" autocomplete="off" inputmode="none" readonly onfocus="tkBind('searchInput')" onblur="tkOnBlur()">
+            <button type="button" class="search-x" id="searchX" onclick="clearSearch()" aria-label="Clear search">×</button>
+          </div>
           <div class="results hide" id="results"></div>
         </div>
+      </div>
+
+      <div id="rowPanel" class="rowpanel hide">
+        <div class="rowpick">
+          <label>Row / location you're counting</label>
+          <div class="locrow">
+            <select id="rowBldg" onchange="onRowBldg(this.value)"></select>
+            <input id="rowNum" class="mono" inputmode="none" readonly placeholder="number" onfocus="kpBind('rowNum')" onblur="kpOnBlur()">
+            <button type="button" class="btn primary rowgo" onclick="loadRow()">Show</button>
+          </div>
+          <div class="rowstep">
+            <button type="button" class="btn ghost" id="rowPrev" onclick="rowStep(-1)">◀ Prev</button>
+            <button type="button" class="btn ghost" id="rowNext" onclick="rowStep(1)">Next ▶</button>
+            <button type="button" class="btn ghost rowcalc" onclick="openCalc()" aria-label="Calculator">🧮</button>
+          </div>
+        </div>
+        <div id="rowInfo" class="rowinfo"></div>
+        <div id="rowList" class="rowlist"></div>
       </div>
 
       <div id="notFound" class="notfound hide"></div>
@@ -240,15 +529,192 @@ input,select{font-family:inherit;font-size:16px}
       <div id="cardMount"></div>
 
       <div class="recent">
-        <h3>This session <span class="exp linkbtn hide" id="exportBtn" onclick="exportCSV()">Download CSV</span></h3>
+        <h3>Moves this session</h3>
         <div id="recentList"><div class="empty-recent">Scanned items will appear here after you save them.</div></div>
       </div>
+    </div>
+  </section>
+
+  <!-- LIVE INVENTORY (per building) -->
+  <section id="inventory" hidden>
+    <div class="topbar">
+      <div class="title">
+        <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> Live inventory</div>
+        <div class="who" id="invSummary">Loading…</div>
+      </div>
+      <button type="button" class="topbtn" id="invRefresh" onclick="refreshInventory()" aria-label="Refresh">↻</button>
+    </div>
+    <div class="body">
+      <input id="invFilter" class="invfilter" placeholder="filter by product or building" autocomplete="off" oninput="renderInventory()">
+      <div id="invBody" class="invbody"></div>
+    </div>
+  </section>
+
+  <!-- SIGN IN -->
+  <section id="login" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">CSC Live Inventory</h1>
+      <p class="auth-sub">Sign in so moves are logged under your name.</p>
+      <label class="auth-lbl">Your name</label>
+      <select id="loginName" class="authselect"></select>
+      <label class="auth-lbl">4-digit PIN</label>
+      <input id="loginPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off"
+             onfocus="pinBind('loginPin')" onblur="pinOnBlur()" onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" class="btn primary authbtn" id="loginBtn" onclick="doLogin()">Sign in</button>
+      <div class="auth-links">
+        <span class="linkbtn" onclick="showScreen('signup')">＋ Create account</span>
+        <span class="linkbtn" onclick="showScreen('approvals')">Manager approvals →</span>
+      </div>
+      <div class="auth-msg" id="loginMsg"></div>
+    </div>
+  </section>
+
+  <!-- CREATE ACCOUNT -->
+  <section id="signup" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">Create account</h1>
+      <p class="auth-sub">A manager approves new accounts before you can sign in.</p>
+      <label class="auth-lbl">Full name</label>
+      <input id="suName" class="authinput" autocomplete="off" placeholder="First Last">
+      <label class="auth-lbl">Department</label>
+      <select id="suDept" class="authselect" onchange="onSuDept()">
+        <option value="">— select —</option>
+        <option>Metals Department</option>
+        <option>Plastics Department</option>
+        <option>Shipping Department</option>
+        <option>Litho Department</option>
+      </select>
+      <div id="suShiftRow" hidden>
+        <label class="auth-lbl">Shift # (Plastics only)</label>
+        <select id="suShift" class="authselect"><option>1</option><option>2</option><option>3</option></select>
+      </div>
+      <label class="auth-lbl">Role</label>
+      <select id="suRole" class="authselect">
+        <option value="">— select —</option>
+        <option>Forklift Driver</option>
+        <option>Shipping</option>
+        <option>Manager</option>
+      </select>
+      <label class="auth-lbl">Create a 4-digit PIN</label>
+      <input id="suPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off" onfocus="pinBind('suPin')" onblur="pinOnBlur()">
+      <label class="auth-lbl">Confirm PIN</label>
+      <input id="suPin2" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off" onfocus="pinBind('suPin2')" onblur="pinOnBlur()">
+      <button type="button" class="btn primary authbtn" id="suBtn" onclick="doSignup()">Create account</button>
+      <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
+      <div class="auth-msg" id="suMsg"></div>
+    </div>
+  </section>
+
+  <!-- MANAGER APPROVALS -->
+  <section id="approvals" hidden>
+    <div class="authcard">
+      <img class="auth-logo" src="csc-logo.jpg" alt="CSC">
+      <h1 class="auth-h1">Manager approvals</h1>
+      <p class="auth-sub">Sign in as a manager to approve pending accounts.</p>
+      <label class="auth-lbl">Manager name</label>
+      <select id="mgrName" class="authselect"></select>
+      <label class="auth-lbl">Manager PIN</label>
+      <input id="mgrPin" class="authpin" inputmode="none" readonly maxlength="4" placeholder="••••" autocomplete="off"
+             onfocus="pinBind('mgrPin')" onblur="pinOnBlur()" onkeydown="if(event.key==='Enter')loadPending()">
+      <button type="button" class="btn primary authbtn" id="mgrBtn" onclick="loadPending()">Load pending accounts</button>
+      <div id="pendingList" class="pendinglist"></div>
+      <div class="auth-links"><span class="linkbtn" onclick="showScreen('login')">← Back to sign in</span></div>
+      <div class="auth-msg" id="mgrMsg"></div>
     </div>
   </section>
 
 </div>
 <div id="toast"></div>
 <div class="buildtag" id="buildTag"></div>
+
+<div id="calcModal" class="modal hide" onclick="if(event.target===this)closeCalc()">
+  <div class="modal-card calc-card">
+    <div class="calc-head">
+      <div class="modal-title">Calculator</div>
+      <button type="button" class="calc-x" onclick="closeCalc()" aria-label="Close">×</button>
+    </div>
+    <input id="calcDisplay" inputmode="none" readonly autocomplete="off" placeholder="0">
+    <div class="calc-result" id="calcResult"></div>
+    <div class="calc-grid">
+      <button type="button" class="clr" onclick="calcClear()">C</button>
+      <button type="button" onclick="calcPress('(')">(</button>
+      <button type="button" onclick="calcPress(')')">)</button>
+      <button type="button" class="op" onclick="calcPress('/')">÷</button>
+      <button type="button" onclick="calcPress('7')">7</button>
+      <button type="button" onclick="calcPress('8')">8</button>
+      <button type="button" onclick="calcPress('9')">9</button>
+      <button type="button" class="op" onclick="calcPress('*')">×</button>
+      <button type="button" onclick="calcPress('4')">4</button>
+      <button type="button" onclick="calcPress('5')">5</button>
+      <button type="button" onclick="calcPress('6')">6</button>
+      <button type="button" class="op" onclick="calcPress('-')">−</button>
+      <button type="button" onclick="calcPress('1')">1</button>
+      <button type="button" onclick="calcPress('2')">2</button>
+      <button type="button" onclick="calcPress('3')">3</button>
+      <button type="button" class="op" onclick="calcPress('+')">+</button>
+      <button type="button" onclick="calcBack()">⌫</button>
+      <button type="button" onclick="calcPress('0')">0</button>
+      <button type="button" onclick="calcPress('.')">.</button>
+      <button type="button" class="eq" onclick="calcEquals()">=</button>
+    </div>
+    <div class="calc-use"><button type="button" class="btn primary" id="calcUseBtn" onclick="calcUse()">Use this number ↑</button></div>
+    <div class="calc-hist">
+      <div class="lbl">Recent (last 3)</div>
+      <div id="calcHist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- docked number pad: slides up while a count box (Full/Extra/Location) is active -->
+<div class="keypad" id="cardKeypad" aria-hidden="true">
+  <div class="kp-target">
+    <span>Typing into: <b id="kpField">Full</b></span>
+    <button type="button" class="kp-calc" onpointerdown="kpOpenCalc(event)" aria-label="Calculator"><svg class="ico-calc" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="7" y="5" width="10" height="3.4" rx="1" fill="currentColor"/><circle cx="8.3" cy="12.4" r="1.15" fill="currentColor"/><circle cx="12" cy="12.4" r="1.15" fill="currentColor"/><circle cx="15.7" cy="12.4" r="1.15" fill="currentColor"/><circle cx="8.3" cy="16" r="1.15" fill="currentColor"/><circle cx="12" cy="16" r="1.15" fill="currentColor"/><circle cx="15.7" cy="16" r="1.15" fill="currentColor"/><circle cx="8.3" cy="19.4" r="1.15" fill="currentColor"/><circle cx="12" cy="19.4" r="1.15" fill="currentColor"/><circle cx="15.7" cy="19.4" r="1.15" fill="currentColor"/></svg> Calculator</button>
+  </div>
+  <div class="kp-grid">
+    <button type="button" onpointerdown="kpTap(event,'1')">1</button>
+    <button type="button" onpointerdown="kpTap(event,'2')">2</button>
+    <button type="button" onpointerdown="kpTap(event,'3')">3</button>
+    <button type="button" onpointerdown="kpTap(event,'4')">4</button>
+    <button type="button" onpointerdown="kpTap(event,'5')">5</button>
+    <button type="button" onpointerdown="kpTap(event,'6')">6</button>
+    <button type="button" onpointerdown="kpTap(event,'7')">7</button>
+    <button type="button" onpointerdown="kpTap(event,'8')">8</button>
+    <button type="button" onpointerdown="kpTap(event,'9')">9</button>
+    <button type="button" class="kp-back" onpointerdown="kpBackStart(event)" onpointerup="kpBackStop()" onpointerleave="kpBackStop()" onpointercancel="kpBackStop()" aria-label="Delete (hold to clear)">⌫</button>
+    <button type="button" onpointerdown="kpTap(event,'0')">0</button>
+    <button type="button" class="kp-go" onpointerdown="kpTap(event,'next')" aria-label="Next / Save">→</button>
+  </div>
+</div>
+
+<!-- Alphanumeric on-screen keyboard for text fields (check-value prompt, Weight, Type). The paired
+     scanner registers as a hardware keyboard, so iOS never shows its soft keyboard for these. -->
+<div class="keypad tkeypad" id="textKeypad" aria-hidden="true">
+  <div class="kp-target"><span>Typing into: <b id="tkField">value</b></span></div>
+  <div class="tk-grid" id="tkGrid"></div>
+</div>
+
+<!-- on-screen number pad for PIN entry (sign-in / create-account / approvals). PIN fields use
+     inputmode=none + readonly so the phone's own keyboard never appears; this pad drives them. -->
+<div class="keypad pinpad" id="pinpad" aria-hidden="true">
+  <div class="kp-target"><span>Enter <b id="pinField">PIN</b></span></div>
+  <div class="kp-grid">
+    <button type="button" onpointerdown="pinTap(event,'1')">1</button>
+    <button type="button" onpointerdown="pinTap(event,'2')">2</button>
+    <button type="button" onpointerdown="pinTap(event,'3')">3</button>
+    <button type="button" onpointerdown="pinTap(event,'4')">4</button>
+    <button type="button" onpointerdown="pinTap(event,'5')">5</button>
+    <button type="button" onpointerdown="pinTap(event,'6')">6</button>
+    <button type="button" onpointerdown="pinTap(event,'7')">7</button>
+    <button type="button" onpointerdown="pinTap(event,'8')">8</button>
+    <button type="button" onpointerdown="pinTap(event,'9')">9</button>
+    <button type="button" class="kp-back" onpointerdown="pinBack(event)" aria-label="Delete">⌫</button>
+    <button type="button" onpointerdown="pinTap(event,'0')">0</button>
+    <button type="button" class="kp-go" onpointerdown="pinTap(event,'go')" aria-label="Continue">✓</button>
+  </div>
+</div>
 
 <script>
 /* ====== Backend config ======
@@ -260,7 +726,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v5-live';
+var APP_VERSION = 'v69-checkvalues';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -278,21 +744,422 @@ function callApi(fn, args){
 
 /* ====== DATA loaded live from the Google Sheet lookup tabs ====== */
 var DATA = {ends:[],cans:[],plastics:[]};
-var BUILDINGS = [];   // from the Buildings tab (name, prefix, production, ...)
 </script>
 <script>
 /* ====== APP LOGIC ====== */
-const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null };
+const state = { dept:null, metalKind:'ends', entries:{metals:[], plastics:[]}, current:null, building:'', mode:'scan', staged:false, view:'move', to:'' };
+var rowSkips = {};   // per-location products the user marked "not here" in Count-by-Row (transient)
+
+/* Buildings loaded live from the Movements workbook's Buildings tab: {name, prefix, production}.
+   Movements are building -> building: From is the "building you're in", To is picked on the card. */
+var BUILDINGS = [];
+function buildingNameOptions(sel){
+  return ['<option value="">— pick —</option>'].concat(
+    BUILDINGS.map(function(b){ return '<option value="'+esc(b.name)+'"'+(b.name===sel?' selected':'')+'>'+esc(b.name)+(b.production?' (production)':'')+'</option>'; })
+  ).join('');
+}
+function buildingByName(n){ return BUILDINGS.find(function(b){ return b.name===n; }); }
+/* Card "To building" changed: show the "In Production" note when the destination is a production env. */
+// ---- To building: tiles (all buildings, minus the one we're moving FROM) ----
+var _toOpts=[];
+function renderToTiles(){
+  const box=$('toTiles'); if(!box) return;
+  const opts = BUILDINGS.filter(function(b){ return b.name!==state.building; })
+    .map(function(b){ return {name:b.name, production:b.production}; });
+  _toOpts=opts;
+  box.innerHTML = opts.map(function(o,i){
+    const on = o.name===state.to ? ' on' : '';
+    const sub = o.production ? 'Production · flags In Production' : 'move here';
+    return '<button type="button" class="frombtn'+(o.production?' prod':'')+on+'" onclick="pickTo('+i+')">'
+      + '<span class="fb-name">'+esc(o.name)+'</span><span class="fb-sub">'+esc(sub)+'</span></button>';
+  }).join('');
+}
+function pickTo(i){
+  const o=_toOpts[i]; if(!o) return;
+  state.to=o.name;
+  const el=$('prodHint'); if(el){ const b=buildingByName(o.name); el.hidden = !(b && b.production); }
+  renderToTiles();
+  revealStep(4); scrollStepIntoView(4);   // To picked -> reveal the staged question
+}
+/* "Staged for shipping?" Yes/No — Yes adds a "Staged for Shipment" flag to the movement. */
+function setStaged(v){
+  state.staged = !!v;
+  const y=$('stagedYes'), n=$('stagedNo'); if(y) y.classList.toggle('on', state.staged); if(n) n.classList.toggle('on', !state.staged);
+  const h=$('stagedHint'); if(h) h.hidden = !state.staged;
+  revealStep(5); scrollStepIntoView(5);   // answered -> reveal Save
+}
+
+/* ---- From-building tiles: only buildings the counts log shows holding this product ---- */
+function currentKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='cans'?'cans':'ends'); }
+// Resolve a location prefix (e.g. "M") to a building name via the Buildings tab's Location Prefix.
+function buildingForPrefix(pfx){
+  const b = BUILDINGS.find(function(x){ return x.prefix && norm(x.prefix)===norm(pfx); });
+  return b ? b.name : pfx;   // fall back to the raw prefix if no Buildings row matches
+}
+// Live per-building on-hand for a product: the latest count at each location (older counts are
+// superseded by buildLogIndex), rolled up to a PER-BUILDING total, then this app's own movements
+// stacked on top (a movement leaves the From building and joins the To building). Only buildings
+// that still hold stock are returned, highest on-hand first: [{name, qty, production}].
+function buildingsWithStock(item, key){
+  const dep = key==='plastics' ? 'plastics' : 'metals';
+  const kindWant = key==='cans' ? 'Cans' : (key==='ends' ? 'Ends' : '');
+  const code = norm(item.code), desc = norm(item.desc);
+  // Product codes are unique, so match on code first; description is a fallback for code-less rows.
+  const mine = function(){ for(let i=0;i<arguments.length;i++){ const f=norm(arguments[i]); if(f && ((code&&f===code)||(desc&&f===desc))) return true; } return false; };
+  const byBldg = {};   // building NAME -> net on-hand
+  const add = function(name, q){ if(name) byBldg[name] = (byBldg[name]||0) + q; };
+  // 1) counted baseline — newest count at each location, rolled up per building
+  const idx = LOGIDX[dep] || {};
+  Object.keys(idx).forEach(function(locKey){
+    (idx[locKey]||[]).forEach(function(r){
+      if(dep==='metals' && kindWant && r.kind && norm(r.kind)!==norm(kindWant)) return;
+      if(!mine(r.product, r.desc)) return;
+      const q = Number(r.qty)||0; if(!q) return;
+      const pfx = parseLoc(r.loc).bldg; if(!pfx) return;
+      add(buildingForPrefix(pfx), q);
+    });
+  });
+  // 2) stack movements this app has logged (skip voided): out of From, into To
+  (MOVES||[]).forEach(function(m){
+    if(m.voided) return;
+    if(!mine(m.product, m.barcode, m.desc)) return;
+    const q = Number(m.qtyEach)||0; if(!q) return;
+    add(m.fromBuilding, -q);
+    add(m.toBuilding, q);
+  });
+  const out = [];
+  Object.keys(byBldg).forEach(function(name){
+    const q = byBldg[name]; if(q<=0) return;   // hide emptied / negative buildings
+    const b = BUILDINGS.find(function(x){ return x.name===name; });
+    out.push({ name:name, qty:q, production: b?b.production:false });
+  });
+  out.sort(function(a,b){ return b.qty - a.qty; });
+  return out;
+}
+// The Production building that matches the product's category (a creation point — always offered).
+function productionBuildingFor(key){
+  const wantPlastic = (key==='plastics');
+  return BUILDINGS.find(function(b){
+    if(!b.production) return false;
+    const n = norm(b.name);
+    return wantPlastic ? n.indexOf('PLASTIC')!==-1 : n.indexOf('METAL')!==-1;
+  }) || null;
+}
+var _fromOpts = [];
+// Render the From tiles for the open card. Called on card open and again when the log finishes loading.
+function renderFromTiles(){
+  const box=$('fromTiles'); if(!box) return;
+  if(!state.current){ box.innerHTML=''; _fromOpts=[]; return; }
+  const key=currentKey();
+  const prod=productionBuildingFor(key);
+  // On-hand needs BOTH the counts baseline and the movement ledger; proceed once each has resolved.
+  const ready = (LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
+  const stock = ready ? buildingsWithStock(state.current, key) : [];
+  let opts, note='';
+  if(ready && stock.length){
+    opts = stock.slice();
+    if(prod && !opts.some(function(o){ return o.name===prod.name; })) opts.push({name:prod.name, qty:null, production:true});
+  } else {
+    // Still loading, unavailable, or nothing on hand — let them pick any building; Production stays offered.
+    note = !ready ? 'Loading on-hand stock…'
+         : ((LOG_ERR||MOVES_ERR) ? 'Live stock unavailable — pick where it’s moving from.'
+                    : 'No counted stock for this item — pick where it’s moving from.');
+    opts = BUILDINGS.filter(function(b){ return !b.production; }).map(function(b){ return {name:b.name, qty:null, production:false}; });
+    if(prod) opts.push({name:prod.name, qty:null, production:true});
+  }
+  if(!state.building && opts.length===1) state.building=opts[0].name;   // one obvious source → pre-pick it
+  _fromOpts=opts;
+  box.innerHTML=opts.map(function(o,i){
+    const on = o.name===state.building ? ' on' : '';
+    const sub = o.production ? 'Production · add stock' : (o.qty!=null ? o.qty.toLocaleString()+' on hand' : 'no count');
+    return '<button type="button" class="frombtn'+(o.production?' prod':'')+on+'" onclick="pickFrom('+i+')">'
+      + '<span class="fb-name">'+esc(o.name)+'</span><span class="fb-sub">'+esc(sub)+'</span></button>';
+  }).join('');
+  const n=$('fromNote'); if(n){ n.textContent=note; n.hidden=!note; }
+}
+function pickFrom(i){
+  const o=_fromOpts[i]; if(!o) return;
+  state.building=o.name; persistSession();
+  const tb=$('topBldg'); if(tb) tb.value=o.name;   // keep the (hidden) top select in sync
+  if(state.to===state.building){ state.to=''; }    // can't move to the same building we're leaving
+  renderFromTiles();
+  renderToTiles();                                 // From changed -> drop it from the To options
+  // advance to the quantity step and land on the right box (Per if unknown, else Full)
+  revealStep(2);
+  setTimeout(function(){
+    const needPer = !String(($('f_per')&&$('f_per').value)||'').trim();
+    const f = needPer ? $('f_per') : $('f_full');
+    if(f){ f.focus(); if(f.select) f.select(); }
+  }, 80);
+}
+
+/* ---- live inventory per building (counts baseline + stacked movements, all products) ---- */
+// Canonicalize a product to its lookup code + description when known, so a counts row and a
+// movement row for the same item aggregate onto one line.
+function invKey(rawCode, desc){
+  const c = norm(rawCode);
+  const hit = c && IDXALL[c];
+  if(hit) return { key: norm(hit.it.code), code: hit.it.code, desc: hit.it.desc };
+  return { key: c || norm(desc), code: String(rawCode||''), desc: String(desc||rawCode||'') };
+}
+// Build { buildingName -> { productKey -> {code, desc, qty} } } across every product.
+function computeInventory(){
+  const inv = {};
+  const add = function(bldg, id, q){
+    if(!bldg || !id.key) return;
+    const B = inv[bldg] || (inv[bldg] = {});
+    const P = B[id.key] || (B[id.key] = { code:id.code, desc:id.desc, qty:0 });
+    P.qty += q;
+    if(!P.desc && id.desc) P.desc = id.desc;
+    if(!P.code && id.code) P.code = id.code;
+  };
+  // 1) counted baseline — newest count at each location, rolled up per building
+  ['metals','plastics'].forEach(function(dep){
+    const idx = LOGIDX[dep] || {};
+    Object.keys(idx).forEach(function(locKey){
+      (idx[locKey]||[]).forEach(function(r){
+        const q = Number(r.qty)||0; if(!q) return;
+        const pfx = parseLoc(r.loc).bldg; if(!pfx) return;
+        add(buildingForPrefix(pfx), invKey(r.product, r.desc), q);
+      });
+    });
+  });
+  // 2) stack movements — leaves the From building, joins the To building
+  (MOVES||[]).forEach(function(m){
+    if(m.voided) return;
+    const q = Number(m.qtyEach)||0; if(!q) return;
+    const id = invKey(m.barcode||m.product, m.desc);
+    add(m.fromBuilding, id, -q);
+    add(m.toBuilding, id, q);
+  });
+  return inv;
+}
+// Products flagged "Staged for Shipment" by our movements: { productKey -> {code,desc,qty,bldgs} }.
+function computeStaged(){
+  const out = {};
+  (MOVES||[]).forEach(function(m){
+    if(m.voided || !m.staged) return;
+    const qv = Number(m.qtyEach)||0; if(!qv) return;
+    const id = invKey(m.barcode||m.product, m.desc); if(!id.key) return;
+    const P = out[id.key] || (out[id.key] = { code:id.code, desc:id.desc, qty:0, bldgs:{} });
+    P.qty += qv;
+    const bn = m.toBuilding || '—';
+    P.bldgs[bn] = (P.bldgs[bn]||0) + qv;
+  });
+  return out;
+}
+function renderInventory(){
+  const host=$('invBody'); if(!host) return;
+  const ready = (LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
+  if(!ready){ host.innerHTML='<div class="inv-empty">Loading live inventory…</div>'; const s=$('invSummary'); if(s) s.textContent='Loading…'; return; }
+  const q = norm($('invFilter') ? $('invFilter').value : '');
+  const inv = computeInventory();
+  const order = BUILDINGS.map(function(b){ return b.name; });
+  const names = Object.keys(inv).sort(function(a,b){
+    const ia=order.indexOf(a), ib=order.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    if(ia!==-1) return -1; if(ib!==-1) return 1;
+    return a<b?-1:(a>b?1:0);
+  });
+  let html='', gUnits=0, gLines=0, shownB=0;
+  names.forEach(function(name){
+    const bMatch = !q || norm(name).indexOf(q)!==-1;
+    const rows = Object.keys(inv[name]).map(function(k){ return inv[name][k]; })
+      .filter(function(p){ return p.qty>0 && (bMatch || norm(p.code).indexOf(q)!==-1 || norm(p.desc).indexOf(q)!==-1); })
+      .sort(function(a,b){ return b.qty - a.qty; });
+    if(!rows.length) return;
+    const total = rows.reduce(function(s,p){ return s+p.qty; }, 0);
+    gUnits += total; gLines += rows.length; shownB++;
+    const b = buildingByName(name);
+    const badge = (b && b.production) ? '<span class="inv-prod">production</span>'
+                : (!b ? '<span class="inv-unmapped" title="This location prefix has no row in the Buildings tab">unmapped location</span>' : '');
+    html += '<div class="inv-b"><div class="inv-bh">'
+      + '<span class="inv-bn">'+esc(name)+badge+'</span>'
+      + '<span class="inv-bt">'+total.toLocaleString()+' units · '+rows.length+' item'+(rows.length===1?'':'s')+'</span></div>'
+      + '<div class="inv-rows">'
+      + rows.map(function(p){
+          return '<div class="inv-row"><span class="inv-p"><b>'+esc(p.code||p.desc||'?')+'</b>'
+            + (p.desc && p.desc!==p.code ? '<span class="inv-d">'+esc(p.desc)+'</span>' : '')
+            + '</span><span class="inv-q">'+p.qty.toLocaleString()+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  });
+  const s=$('invSummary');
+  if(s) s.textContent = gUnits.toLocaleString()+' units · '+gLines+' lines · '+shownB+' building'+(shownB===1?'':'s');
+  // ---- Staged-for-shipping breakdown, at the bottom of the tables ----
+  const staged = computeStaged();
+  const sk = Object.keys(staged)
+    .filter(function(k){ const p=staged[k]; return p.qty>0 && (!q || norm(p.code).indexOf(q)!==-1 || norm(p.desc).indexOf(q)!==-1 || Object.keys(p.bldgs).some(function(bn){ return norm(bn).indexOf(q)!==-1; })); })
+    .sort(function(a,b){ return staged[b].qty - staged[a].qty; });
+  let stagedHtml='';
+  if(sk.length){
+    const sTotal = sk.reduce(function(t,k){ return t+staged[k].qty; }, 0);
+    stagedHtml = '<div class="inv-b staged"><div class="inv-bh">'
+      + '<span class="inv-bn">📦 Staged for shipment</span>'
+      + '<span class="inv-bt">'+sTotal.toLocaleString()+' units · '+sk.length+' item'+(sk.length===1?'':'s')+'</span></div>'
+      + '<div class="inv-rows">'
+      + sk.map(function(k){
+          const p=staged[k];
+          const chips = Object.keys(p.bldgs).map(function(bn){ return esc(bn)+' '+p.bldgs[bn].toLocaleString(); }).join(' · ');
+          const sub = (p.desc && p.desc!==p.code) ? esc(p.desc)+' — '+chips : chips;
+          return '<div class="inv-row"><span class="inv-p"><b>'+esc(p.code||p.desc||'?')+'</b><span class="inv-d">'+sub+'</span></span>'
+            + '<span class="inv-q">'+p.qty.toLocaleString()+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  }
+  host.innerHTML = (html + stagedHtml) || '<div class="inv-empty">'+(q?'No products match “'+esc(q)+'.”':'No live inventory yet — counts and moves will show up here.')+'</div>';
+}
+function refreshInventory(){
+  const btn=$('invRefresh'); if(btn){ btn.disabled=true; btn.textContent='…'; }
+  Promise.all([loadLogs(), loadMoves()]).then(function(){ renderInventory(); })
+    .catch(function(){ renderInventory(); })
+    .then(function(){ if(btn){ btn.disabled=false; btn.textContent='↻'; } });
+}
+/* Switch between the Move-stock screen and the Live-inventory screen. */
+function showView(v){
+  state.view = v;
+  const c=$('count'), inv=$('inventory');
+  if(c) c.hidden = (v==='inventory');
+  if(inv) inv.hidden = (v!=='inventory');
+  const tm=$('tabMove'), ti=$('tabInv');
+  if(tm) tm.classList.toggle('on', v!=='inventory');
+  if(ti) ti.classList.toggle('on', v==='inventory');
+  if(v==='inventory') renderInventory(); else focusScan();
+}
+// Compose the location from the building select + number box (also accepts typing "m03"/"mt12").
+function composeLoc(){
+  const sel = $('f_bldg') ? $('f_bldg').value : '';
+  const raw = ($('f_loc') && $('f_loc').value || '').trim();
+  const m = /^([A-Za-z]{1,2})[\s-]?(\d+)$/.exec(raw);   // allow "m03", "mt12" typed directly
+  let letter = sel, digits;
+  if(m){ letter = m[1].toUpperCase(); digits = m[2]; }
+  else { digits = raw.replace(/\D/g,''); }
+  if(!digits) return letter || '';
+  return (letter ? letter+'-' : '') + digits.padStart(3,'0');
+}
+// Split a stored "M-003" back into building + number for editing.
+function parseLoc(loc){
+  const m = /^([A-Za-z]{1,2})-?(\d+)$/.exec(String(loc||'').trim());
+  if(m) return { bldg:m[1].toUpperCase(), num:String(Number(m[2])) };
+  return { bldg:'', num:String(loc||'') };
+}
+// Fill the top "building you're in" dropdown and select the current building.
+function initBuildingSelect(){
+  const sel=$('topBldg'); if(!sel) return;
+  sel.innerHTML=buildingNameOptions(state.building||'');
+  sel.value=state.building||'';
+}
+// Top dropdown changed: this is the building you're in; new scans auto-fill it.
+function setBuilding(v){
+  state.building=v; persistSession();
+  const top=$('topBldg'); if(top && top.value!==v) top.value=v;
+  if(state.editIndex==null){ const fb=$('f_bldg'); if(fb) fb.value=v; } // don't touch an entry being edited
+}
+// Card's location dropdown changed. For a NEW entry, keep the "building you're in" in sync;
+// while editing, only change this entry (don't move the current building).
+function onCardBldg(v){
+  if(state.editIndex==null){ state.building=v; persistSession(); const top=$('topBldg'); if(top) top.value=v; }
+  updateLogHint();   // building changed → refresh the "last counted here" hint
+}
+
+/* ---- session persistence: entries survive closing/reopening the app ---- */
+const SESSION_KEY = 'cscLiveInvSession_v1';
+function persistSession(){
+  try{
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      entries: state.entries,
+      counter: '',   // never cache the user's name — they sign in each visit
+      lastDept: state.dept,
+      metalKind: state.metalKind,
+      building: state.building
+    }));
+  }catch(e){ /* storage disabled/full — just skip persisting */ }
+}
+function loadSession(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+    if(!s) return null;
+    if(s.entries){
+      state.entries.metals   = Array.isArray(s.entries.metals)   ? s.entries.metals   : [];
+      state.entries.plastics = Array.isArray(s.entries.plastics) ? s.entries.plastics : [];
+    }
+    if(s.metalKind) state.metalKind = s.metalKind;
+    if(s.building) state.building = s.building;
+    return s;
+  }catch(e){ return null; }
+}
+function restoreSession(s){
+  if(!s) return;
+  // The user's name is never cached — leave the counter field blank until sign-in.
+  if($('counterName')) $('counterName').value = '';
+  persistSession();
+}
 
 const $ = id => document.getElementById(id);
 const norm = s => (s||'').toString().trim().toUpperCase();
 const asNum = v => { const n = parseFloat(v); return isNaN(n)?0:n; };
 const esc = s => (s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* A check value marks a cell that needs a manual entry. The prompt text is whatever is wrapped
+   in !!! ... !!! (e.g. "!!!ADD COLOR!!!" -> "ADD COLOR", "!!!s-1 or 3? (1 or 3)!!!" ->
+   "s-1 or 3? (1 or 3)"). Bare "ADD X" / "INPUT" are also accepted.
+   Returns the prompt to show, or null if the cell is a normal value. */
+function checkPrompt(v){
+  const s = (v==null?'':String(v));
+  const m = /!!!\s*([\s\S]+?)\s*!!!/.exec(s);
+  if(m) return m[1].trim();
+  if(/\bINPUT\b/i.test(s)) return 'Enter value';
+  const a = /ADD\s+([A-Za-z]+)/i.exec(s);
+  if(a) return 'Add '+a[1].toLowerCase();
+  return null;
+}
+function isCheckValue(v){ return checkPrompt(v)!==null; }
+
 /* build code->item index per list */
 function indexOf(list){ const m={}; list.forEach(it=>{ if(it.code) m[norm(it.code)]=it; }); return m; }
 var IDX = { ends:{}, cans:{}, plastics:{} };
-function buildIndex(){ IDX = { ends:indexOf(DATA.ends), cans:indexOf(DATA.cans), plastics:indexOf(DATA.plastics) }; }
+function buildIndex(){ IDX = { ends:indexOf(DATA.ends), cans:indexOf(DATA.cans), plastics:indexOf(DATA.plastics) }; buildIndexAll(); }
+
+/* ONE combined catalog across all three lists — a single scan/search box hits every list at
+   once, and whichever list the match came from decides its category (Ends / Cans / Plastics).
+   No department tabs; the scan auto-detects. First list wins if a code somehow appears twice. */
+const LIST_ORDER = ['ends','cans','plastics'];
+var IDXALL = {};                         // codeNorm -> {it, key}
+function buildIndexAll(){
+  IDXALL = {};
+  LIST_ORDER.forEach(function(key){
+    (DATA[key]||[]).forEach(function(it){ if(it.code){ const k=norm(it.code); if(!IDXALL[k]) IDXALL[k]={it:it,key:key}; } });
+  });
+}
+function allProductCount(){ return DATA.ends.length + DATA.cans.length + DATA.plastics.length; }
+// Point state at the list a scanned/picked item came from, so the card renders the right fields.
+function setCategoryFromKey(key){
+  if(key==='plastics'){ state.dept='plastics'; }
+  else { state.dept='metals'; state.metalKind = (key==='cans'?'cans':'ends'); }
+  applyDeptTheme();
+  const t=$('deptTitle'); if(t) t.textContent = state.dept==='plastics' ? 'Plastics' : ('Metals / '+(state.metalKind==='cans'?'Cans':'Ends'));
+}
+// Theme colors + topbar title follow the last scanned item's category (cosmetic only).
+function applyDeptTheme(){
+  const dept=state.dept||'metals';
+  document.documentElement.style.setProperty('--dept', dept==='plastics'?'var(--plastic)':'var(--metal)');
+  document.documentElement.style.setProperty('--dept-accent', dept==='plastics'?'var(--plastic-accent)':'var(--metal-accent)');
+  document.documentElement.style.setProperty('--dept-soft', dept==='plastics'?'var(--plastic-soft)':'var(--metal-soft)');
+}
+// Skip the landing screen — the app opens straight on the single combined scan box.
+function enterApp(){
+  state.dept = state.dept || 'metals';
+  state.metalKind = state.metalKind || 'ends';
+  applyDeptTheme();
+  const t=$('deptTitle'); if(t) t.textContent='Live Inventory';
+  const ls=$('landing'); if(ls) ls.style.display='none';
+  $('count').style.display='flex';
+  const seg=$('metalSeg'); if(seg) seg.classList.add('hide');   // no Ends/Cans sub-tabs
+  state.mode='scan';
+  const tb=$('topBldg'); if(tb) tb.value=state.building||'';
+  clearCardOnly(); renderRecent(); updateHints(); syncMode();
+  focusScan();
+}
 
 function activeList(){
   if(state.dept==='plastics') return DATA.plastics;
@@ -305,6 +1172,7 @@ function activeIdx(){
 function activeEntries(){ return state.dept==='plastics'?state.entries.plastics:state.entries.metals; }
 
 /* ---- navigation ---- */
+// No prefilled counter name — the field starts blank and is whatever the user types.
 function openDept(dept){
   state.dept = dept;
   document.documentElement.style.setProperty('--dept', dept==='plastics'?'var(--plastic)':'var(--metal)');
@@ -312,10 +1180,18 @@ function openDept(dept){
   document.documentElement.style.setProperty('--dept-soft', dept==='plastics'?'var(--plastic-soft)':'var(--metal-soft)');
   $('deptTitle').textContent = dept==='plastics'?'Plastics':'Metals';
   $('metalSeg').classList.toggle('hide', dept==='plastics');
+  if(dept==='metals'){                 // always start Metals on the Ends sub-tab, buttons in sync
+    state.metalKind='ends';
+    $('segEnds').classList.add('on');
+    $('segCans').classList.remove('on');
+  }
   $('scanLabel').textContent = dept==='plastics'?'Scan item number':'Scan barcode';
   $('landing').style.display='none';
   $('count').style.display='flex';
-  clearCard(); renderRecent(); updateHints();
+  const tb=$('topBldg'); if(tb) tb.value=state.building||'';
+  state.mode='scan';
+  clearCard(); renderRecent(); updateHints(); syncMode();
+  refreshEntries();   // pull the authoritative list from the sheet
   focusScan();
 }
 function goHome(){
@@ -328,206 +1204,943 @@ function setMetalKind(k){
   $('segEnds').classList.toggle('on',k==='ends');
   $('segCans').classList.toggle('on',k==='cans');
   $('scanLabel').textContent='Scan barcode';
-  clearCard(); closeSearch(); updateHints(); focusScan();
+  clearCard(); closeSearch(); updateHints(); syncMode();
+  if(state.mode==='scan') focusScan();
 }
 function updateHints(){
-  const list=activeList();
-  const withCode=list.filter(x=>x.code).length;
-  let t = `${list.length} items`;
-  if(state.dept==='metals' && state.metalKind==='cans'){
-    const nocode=list.length-withCode;
-    if(nocode>0) t += ` · ${nocode} have no barcode — use search`;
-  }
-  $('scanCountHint').textContent=t;
+  const total = allProductCount();
+  const hint=$('scanCountHint'); if(hint) hint.textContent = total ? (total.toLocaleString()+' products loaded') : '';
 }
-function focusScan(){ setTimeout(()=>$('scanInput').focus(),60); }
+function focusScan(){ setTimeout(()=>{ const el=$('scanInput'); if(el){ el.focus({preventScroll:true}); } window.scrollTo({top:0,behavior:'smooth'}); },60); }
 
 /* ---- lookup / scan ---- */
 $('scanInput').addEventListener('keydown', e=>{
   if(e.key==='Enter'){ e.preventDefault(); doScan(); }
 });
+// Auto-open once the scanned/typed value matches a real code (no need to press Enter).
+// A short debounce lets a barcode scanner finish "typing" the whole code first. We only
+// open on an exact match, so a partial code while typing never shows a "not found" error.
+let scanTimer;
+$('scanInput').addEventListener('input', ()=>{
+  $('scanX').classList.toggle('show', $('scanInput').value.trim().length>0);
+  clearTimeout(scanTimer);
+  scanTimer=setTimeout(()=>{
+    const raw=$('scanInput').value.trim();
+    if(!raw) return;
+    if(looksLikeDate(raw)){ clearScan(); toast('📅 Date barcode ignored — scan the product code'); return; }
+    const hit=IDXALL[norm(raw)];                          // one combined catalog — Ends/Cans/Plastics
+    if(hit){ setCategoryFromKey(hit.key); chooseItem(hit.it); clearScan(false); }
+  }, 120);
+});
 function doScan(){
   const raw=$('scanInput').value.trim();
   if(!raw) return;
-  const it=activeIdx()[norm(raw)];
-  if(it){ selectItem(it); $('scanInput').value=''; }
-  else showNotFound(raw);
+  const hit=IDXALL[norm(raw)];                            // a real product code always wins
+  if(hit){ setCategoryFromKey(hit.key); chooseItem(hit.it); clearScan(false); return; }
+  if(looksLikeDate(raw)){ clearScan(); toast('📅 Date barcode ignored — scan the product code'); return; }
+  if(isQuantity(raw)){ clearScan(); toast('🔢 Quantity ignored — scan the product code'); return; }
+  showNotFound(raw);
+}
+// A quantity barcode is just a plain number (optionally with commas/spaces, e.g. "1,200"). Since
+// every real product code lives in the lookup, a not-found plain number is a quantity, not a code,
+// so we discard it and let the user scan the product again. (Codes with letters — 25068-W,
+// 401 OVERCAP… — never match this, so "Add manually" still works for them.)
+function isQuantity(s){ return /^\d[\d\s,]*$/.test(s); }
+// Clear the scan box (X button + after a match/date). refocus=false skips stealing focus
+// from a freshly-opened card.
+function clearScan(refocus){ const el=$('scanInput'); if(!el) return; el.value=''; $('scanX').classList.remove('show'); if(refocus!==false) el.focus(); }
+// The barcodes have a date label right next to the product label, so a mis-scan lands the date
+// in the box. Convention is "MM/DD/YYYY 01" (01/02/03 = shift), but it's applied inconsistently
+// (separators/spacing vary). We anchor on a real 4-digit year (19xx/20xx) surrounded by two date
+// separators so a hyphenated part number like "12-34-5678" is NOT mistaken for a date.
+function looksLikeDate(s){
+  return /\b\d{1,2}\s*[\/\-.]\s*\d{1,2}\s*[\/\-.]\s*(19|20)\d{2}\b/.test(s)   // MM/DD/YYYY
+      || /\b(19|20)\d{2}\s*[\/\-.]\s*\d{1,2}\s*[\/\-.]\s*\d{1,2}\b/.test(s);  // YYYY/MM/DD
 }
 function showNotFound(code){
   $('notFound').classList.remove('hide');
-  $('notFound').innerHTML=`<span>⚠</span><div><b>“${esc(code)}” not found</b> in ${state.dept==='plastics'?'Plastics':(state.metalKind)}.<br>Check the department/tab, or <span class="linkbtn" onclick="openSearchWith('${esc(code)}')">search by description</span>.</div>`;
+  $('notFound').innerHTML=`<span>⚠</span><div><b>“${esc(code)}” not found</b> in the product list.<br>
+    <span class="linkbtn" onclick="openSearchWith('${esc(code)}')">Search by description</span>
+    <button type="button" class="btn primary nf-add" onclick="addManual('${esc(code)}')">➕ Add manually</button></div>`;
   clearCardOnly();
+}
+// Count a barcode that isn't in the lookup: open a blank card with the scanned code, start at the
+// Description (alphanumeric keyboard), then flow through the rest and save like any other entry.
+function addManual(code){
+  $('notFound').classList.add('hide');
+  clearScan(false);
+  selectItem({ code:code, desc:'', weight:'', type:'', perUnit:'', __manual:true });
 }
 
 /* ---- search ---- */
 function toggleSearch(){ $('searchWrap').classList.contains('hide')?openSearch():closeSearch(); }
 function openSearch(){ $('searchWrap').classList.remove('hide'); $('searchToggle').textContent='Hide search'; setTimeout(()=>$('searchInput').focus(),40); }
 function openSearchWith(q){ openSearch(); $('searchInput').value=q; runSearch(); }
-function closeSearch(){ $('searchWrap').classList.add('hide'); $('searchToggle').textContent='Search by description'; $('results').classList.add('hide'); $('searchInput').value=''; }
+function closeSearch(){ $('searchWrap').classList.add('hide'); $('searchToggle').textContent='Search by description'; $('results').classList.add('hide'); $('searchInput').value=''; $('searchX').classList.remove('show'); }
+function clearSearch(){ const inp=$('searchInput'); inp.value=''; $('results').classList.add('hide'); $('searchX').classList.remove('show'); inp.focus(); }
 $('searchInput').addEventListener('input', runSearch);
+var _searchHits=[];   // [{it,key}] currently shown by the search
 function runSearch(){
   const q=norm($('searchInput').value);
   const box=$('results');
+  $('searchX').classList.toggle('show', $('searchInput').value.length>0);
   if(q.length<1){ box.classList.add('hide'); return; }
-  const hits=activeList().filter(it=> norm(it.desc).includes(q) || norm(it.code).includes(q)).slice(0,40);
-  if(!hits.length){ box.innerHTML='<div class="empty">No matches</div>'; box.classList.remove('hide'); return; }
-  box.innerHTML=hits.map((it,i)=>`<div class="row" onclick="pickResult(${DATA[listKey()].indexOf(it)})">
-      <span class="code ${it.code?'':'nocode'}">${it.code?esc(it.code):'no barcode'}</span>
-      <span class="d">${esc(it.desc)}</span></div>`).join('');
+  _searchHits=[];
+  LIST_ORDER.forEach(function(key){
+    (DATA[key]||[]).forEach(function(it){
+      if(_searchHits.length>=40) return;
+      if(norm(it.desc).includes(q) || norm(it.code).includes(q)) _searchHits.push({it:it,key:key});
+    });
+  });
+  if(!_searchHits.length){ box.innerHTML='<div class="empty">No matches</div>'; box.classList.remove('hide'); return; }
+  box.innerHTML=_searchHits.map(function(h,i){
+    const it=h.it;
+    return '<div class="row" onclick="pickResult('+i+')">'
+      +'<span class="code '+(it.code?'':'nocode')+'">'+(it.code?esc(it.code):'no barcode')+'</span>'
+      +'<span class="d">'+esc(it.desc)+'</span></div>';
+  }).join('');
   box.classList.remove('hide');
 }
-function listKey(){ return state.dept==='plastics'?'plastics':(state.metalKind==='ends'?'ends':'cans'); }
-function pickResult(i){ const it=DATA[listKey()][i]; selectItem(it); closeSearch(); }
+// Picking a result sets the category from whichever list it came from, then opens the card.
+function pickResult(i){ const h=_searchHits[i]; if(!h) return; closeSearch(); setCategoryFromKey(h.key); chooseItem(h.it); }
 
-/* ---- building pickers ---- */
-function buildingOptions(sel){
-  return BUILDINGS.map(function(b){
-    return '<option value="'+esc(b.name)+'"'+(b.name===sel?' selected':'')+'>'+esc(b.name)+(b.production?' (production)':'')+'</option>';
+/* ---- read-only history log ("last counted here") ---- */
+// Loaded once from the SEPARATE log workbook via the worker's getLogs. Never written to.
+var LOG={metals:[],plastics:[]}, LOGIDX={metals:{},plastics:{}}, LOG_LOADED=false, LOG_ERR=false;
+var LOG_ON=true;   // "compare to last count" is always on
+function loadLogs(){
+  return callApi('getLogs',[]).then(function(res){
+    LOG.metals=(res&&res.metals)||[]; LOG.plastics=(res&&res.plastics)||[];
+    buildLogIndex(); LOG_LOADED=true; LOG_ERR=false; updateLogHint(); renderFromTiles(); renderInventory(); if(state.mode==='row') renderRowPanel();
+  }).catch(function(err){ LOG_ERR=true; LOG_LOADED=false; renderFromTiles(); renderInventory(); if(state.mode==='row') renderRowPanel(); console.warn('log load failed',err); });
+}
+
+/* ---- movement ledger (read back so on-hand = counted baseline +/- movements) ---- */
+var MOVES=[], MOVES_LOADED=false, MOVES_ERR=false;
+function loadMoves(){
+  return callApi('getMovements',[]).then(function(res){
+    MOVES = Array.isArray(res) ? res : []; MOVES_LOADED=true; MOVES_ERR=false; renderFromTiles(); renderInventory();
+  }).catch(function(err){ MOVES_ERR=true; MOVES_LOADED=false; renderFromTiles(); renderInventory(); console.warn('movements load failed',err); });
+}
+// Split a total into full units/pallets + loose, using the item's per-pallet number.
+function unitsBreakdown(total, per){
+  total=Number(total)||0; per=Number(per)||0;
+  if(per>0){ const full=Math.floor(total/per); const loose=total-full*per;
+    return full+' full'+(loose>0?' + '+loose.toLocaleString()+' loose':''); }
+  return null;
+}
+// Location key that matches the app's own normalization (building + numeric value, leading zeros dropped).
+function logLocKey(loc){ const p=parseLoc(loc); return p.bldg+'#'+(p.num||''); }
+// Parse a log Count Date (ISO "2026-09-03", "9/3/2026", or anything Date.parse handles) to a
+// comparable number so we can pick the newest.
+function logDateVal(s){
+  s=String(s||'').trim(); if(!s) return 0;
+  var m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if(m) return Date.UTC(+m[1],+m[2]-1,+m[3]);
+  m=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(s);
+  if(m){ var y=+m[3]; if(y<100) y+=2000; return Date.UTC(y,+m[1]-1,+m[2]); }
+  var t=Date.parse(s); return isNaN(t)?0:t;
+}
+function buildLogIndex(){
+  ['metals','plastics'].forEach(function(dep){
+    const rows = LOG[dep]||[];
+    // The most recent count is the truth: a full recount supersedes EVERYTHING older for that kind.
+    // We take the newest count date per kind (Ends / Cans / Plastics) and keep only rows on that
+    // date, so a location that only appears in an older count (e.g. a stale "R-###" spot) drops out
+    // instead of lingering forever. Undated rows are always kept.
+    const maxByKind={};
+    rows.forEach(function(r){ const kd=norm(r.kind), v=logDateVal(r.countDate); if(v>(maxByKind[kd]||0)) maxByKind[kd]=v; });
+    const byLoc={};
+    rows.forEach(function(r){
+      const kd=norm(r.kind), v=logDateVal(r.countDate);
+      if(v && v < (maxByKind[kd]||0)) return;            // older than this kind's latest count -> superseded
+      const k=logLocKey(r.loc); if(!k||k==='#') return;
+      (byLoc[k]=byLoc[k]||[]).push(r);
+    });
+    LOGIDX[dep]=byLoc;
+  });
+}
+// Every logged product at a location, filtered to the active Ends/Cans kind for metals.
+function logForLoc(loc){
+  const dep = state.dept==='plastics'?'plastics':'metals';
+  const rows=(LOGIDX[dep]||{})[logLocKey(loc)]||[];
+  if(state.dept==='metals'){ const kind=state.metalKind==='cans'?'Cans':'Ends'; return rows.filter(function(r){ return !r.kind || norm(r.kind)===norm(kind); }); }
+  return rows;
+}
+// The "last counted here" line on the card. Updates live as location / counts change.
+function updateLogHint(){
+  const box=$('logHint'); if(!box) return;
+  if(!LOG_ON || !LOG_LOADED || !state.current){ box.hidden=true; return; }
+  const code=(($('f_code')&&$('f_code').value)||state.current.code||'').trim();
+  const loc=composeLoc();
+  if(!loc || parseLoc(loc).num===''){ box.hidden=true; return; }
+  const here=logForLoc(loc);
+  if(!here.length){ box.hidden=true; return; }
+  const mine=here.filter(function(r){ return norm(r.product)===norm(code) || (state.current.desc && norm(r.desc)===norm(state.current.desc)); });
+  if(mine.length){
+    const r=mine[0], last=mine.reduce(function(s,x){ return s+(Number(x.qty)||0); },0);
+    const per=asNum($('f_per')&&$('f_per').value), full=asNum($('f_full')&&$('f_full').value), extra=asNum($('f_extra')&&$('f_extra').value);
+    const cur=Math.round(full*per+extra);
+    let delta='';
+    if(cur>0){ const d=cur-last; delta = d===0 ? ' · <b>same as last</b>' : (d>0?' · <b class="up">+'+d.toLocaleString()+'</b>':' · <b class="down">'+d.toLocaleString()+'</b>'); }
+    const bd=unitsBreakdown(last, per);
+    box.innerHTML='<span class="lh-i">📋</span> Last counted here: <b>'+last.toLocaleString()+'</b> units'+(bd?' <span class="lh-bd">('+bd+')</span>':'')+(r.countDate?' · '+esc(String(r.countDate)):'')+delta;
+    box.className='fld full loghint match';
+  } else {
+    const list=here.slice(0,3).map(function(r){ return esc(r.product||r.desc)+' ('+(Number(r.qty)||0).toLocaleString()+')'; }).join(', ');
+    box.innerHTML='<span class="lh-i">📋</span> This spot last held: '+list+(here.length>3?', …':'')+'<br><span class="lh-note">Not this product — double-check the location.</span>';
+    box.className='fld full loghint warn';
+  }
+  box.hidden=false;
+}
+
+/* ---- Count by row: pick a location, work through what the log had there last ---- */
+// Timestamp in the same shape saveEntry uses.
+function nowTs(){
+  const n=new Date();
+  return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')
+    +' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+}
+// Find the lookup row (perUnit/weight/type) for a logged product, by code then description.
+function lookupForProduct(product, desc){
+  const idx=activeIdx(); let it=idx[norm(product)];
+  if(it) return it;
+  const list=activeList();
+  return list.find(function(x){ return norm(x.desc)===norm(desc) || norm(x.desc)===norm(product) || norm(x.code)===norm(product); }) || null;
+}
+// Location from the row picker (mirror of composeLoc for the row fields).
+function composeRowLoc(){
+  const sel=$('rowBldg')?$('rowBldg').value:'';
+  const raw=($('rowNum')&&$('rowNum').value||'').trim();
+  const m=/^([A-Za-z]{1,2})[\s-]?(\d+)$/.exec(raw);
+  let letter=sel, digits;
+  if(m){ letter=m[1].toUpperCase(); digits=m[2]; } else { digits=raw.replace(/\D/g,''); }
+  if(!digits) return letter||'';
+  return (letter?letter+'-':'')+digits.padStart(3,'0');
+}
+function fillRowBuildings(){
+  const sel=$('rowBldg'); if(!sel || sel.dataset.built) return; sel.dataset.built='1';
+  sel.innerHTML=['<option value="">—</option>'].concat(BUILDINGS.map(function(b){ return '<option value="'+b[0]+'">'+b[0]+' · '+b[1]+'</option>'; })).join('');
+  sel.value=state.building||'';
+}
+function onRowBldg(v){ state.building=v; persistSession(); const tb=$('topBldg'); if(tb) tb.value=v; }
+// Switch between Scan and Count-by-row.
+function setMode(mode){
+  state.mode=mode;
+  clearCardOnly(); $('notFound').classList.add('hide'); closeSearch();
+  syncMode();
+  if(mode==='scan'){ focusScan(); } else { kpHide(); }
+}
+// Reflect the current mode in the UI (buttons, which panel shows). Safe to call anytime.
+function syncMode(){
+  const m=state.mode||'scan';
+  const ms=$('modeScan'), mr=$('modeRow'); if(ms) ms.classList.toggle('on',m==='scan'); if(mr) mr.classList.toggle('on',m==='row');
+  const sb=$('scanbay'); if(sb) sb.style.display=m==='scan'?'':'none';
+  const bb=$('bldgBar'); if(bb) bb.style.display='none';   // From is chosen per-product on the card now
+  const rp=$('rowPanel'); if(rp) rp.classList.toggle('hide', m!=='row');
+  if(m==='row'){ fillRowBuildings(); renderRowPanel(); }
+}
+function loadRow(){ kpHide(); renderRowPanel(); }
+// Step the row number up/down by one and reload — walk locations without retyping.
+function rowStep(delta){
+  const loc=composeRowLoc(); const p=parseLoc(loc);
+  if(p.bldg && $('rowBldg') && !$('rowBldg').value){ $('rowBldg').value=p.bldg; }   // keep the building
+  let n = p.num!=='' ? Number(p.num) : 0;
+  n = Math.max(1, n+delta);
+  const el=$('rowNum'); if(el){ el.value=String(n); }
+  _kpFresh=false; kpHide();
+  renderRowPanel();
+}
+// Session entries already recorded at this location (so we can tick counted products).
+function countedAt(loc){ const key=logLocKey(loc); return activeEntries().filter(function(e){ return logLocKey(e.loc)===key; }); }
+function rowIsCounted(counted, r){ return counted.some(function(e){ return norm(e.code)===norm(r.product) || (r.desc && norm(e.desc)===norm(r.desc)); }); }
+function rowCountedEntry(counted, r){ return counted.find(function(e){ return norm(e.code)===norm(r.product) || (r.desc && norm(e.desc)===norm(r.desc)); }); }
+function rowSkipKey(loc,i){ return logLocKey(loc)+'|'+i; }
+// Show the target location on the Prev/Next buttons (e.g. "◀ S-006" / "S-008 ▶").
+function updateRowStepLabels(){
+  const prev=$('rowPrev'), next=$('rowNext'); if(!prev||!next) return;
+  const p=parseLoc(composeRowLoc());
+  const pad=x=>(p.bldg?p.bldg+'-':'')+String(x).padStart(3,'0');
+  if(p.num!==''){ const n=Number(p.num); prev.textContent = n>1?('◀ '+pad(n-1)):'◀ Prev'; next.textContent = pad(n+1)+' ▶'; }
+  else { prev.textContent='◀ Prev'; next.textContent='Next ▶'; }
+}
+function renderRowPanel(){
+  fillRowBuildings();
+  updateRowStepLabels();
+  const info=$('rowInfo'), list=$('rowList'); if(!info||!list) return;
+  const loc=composeRowLoc();
+  if(!loc || parseLoc(loc).num===''){
+    info.innerHTML='<div class="rowhint">Pick a building and enter the row/location number, then tap <b>Show</b>.</div>'; list.innerHTML=''; return;
+  }
+  if(!LOG_LOADED){
+    info.innerHTML='<div class="rowhint warn">Last-count log isn’t loaded yet — nothing to pre-fill for <b>'+esc(loc)+'</b>.<br>You can still add items from the <b>Scan item</b> tab. (Check the log setup.)</div>';
+    list.innerHTML='<button type="button" class="btn ghost rowadd" onclick="rowAddProduct()">+ Add a product here</button>'; return;
+  }
+  const rows=logForLoc(loc);
+  const counted=countedAt(loc);
+  const doneN=rows.filter(function(r){ return rowIsCounted(counted,r); }).length;
+  info.innerHTML='<div class="rowhdr">Last count at <b>'+esc(loc)+'</b> · '+rows.length+' item'+(rows.length===1?'':'s')
+    +(rows.length?' · <b>'+doneN+'</b> counted':'')+'</div>';
+  let html='';
+  rows.forEach(function(r,i){
+    if(rowSkips[rowSkipKey(loc,i)]) return;   // marked "not here"
+    html+=rowItemHtml(r,i,loc,counted);
+  });
+  if(!rows.length){ html='<div class="rowhint">Nothing was logged at <b>'+esc(loc)+'</b>.</div>'; }
+  html+='<button type="button" class="btn ghost rowadd" onclick="rowAddProduct()">+ Add a product here</button>';
+  list.innerHTML=html;
+}
+function rowItemHtml(r,i,loc,counted){
+  const it=lookupForProduct(r.product,r.desc);
+  const per=it?Number(it.perUnit)||0:0;
+  const total=Number(r.qty)||0;
+  const bd=unitsBreakdown(total, per);
+  const done=rowIsCounted(counted,r);
+  const de=done?rowCountedEntry(counted,r):null;
+  const sub=(r.desc&&r.desc!==r.product?esc(r.desc)+' · ':'')+'last: <b>'+total.toLocaleString()+'</b> units'+(bd?' ('+bd+')':'');
+  return '<div class="rowitem'+(done?' done':'')+'">'
+    +'<div class="ri-main"><div class="ri-name">'+esc(r.product||r.desc)+'</div><div class="ri-sub">'+sub+'</div></div>'
+    +(done
+      ? '<div class="ri-done">✓ '+(Number(de&&de.total)||0).toLocaleString()+'</div>'
+      : '<div class="ri-btns">'
+          +'<button type="button" class="btn tiny ok" onclick="rowSame('+i+')">Same</button>'
+          +'<button type="button" class="btn tiny" onclick="rowEdit('+i+')">Edit</button>'
+          +'<button type="button" class="btn tiny x" onclick="rowSkip('+i+')" aria-label="Not here">✕</button>'
+        +'</div>')
+    +'</div>';
+}
+function rowEntryFor(r, loc, totalUnits){
+  const it=lookupForProduct(r.product,r.desc);
+  const per=it?Number(it.perUnit)||0:0;
+  let full=0, extra=Number(totalUnits)||0;
+  if(per>0){ full=Math.floor((Number(totalUnits)||0)/per); extra=(Number(totalUnits)||0)-full*per; }
+  return {
+    ts: nowTs(), counter: $('counterName').value.trim()||'—',
+    category: state.dept==='plastics'?'Plastics':(state.metalKind==='ends'?'Ends':'Cans'),
+    code: (it&&it.code)||r.product||'', desc: (it&&it.desc)||r.desc||r.product||'',
+    weight: (it&&it.weight)||'', type: (it&&it.type)||'',
+    per, full, extra, total: Math.round(full*per+extra), loc: loc
+  };
+}
+var _rowSaving=false;
+function appendCounted(entry){
+  return callApi('appendEntry',[entry, state.dept]).then(function(){
+    activeEntries().unshift(entry); persistSession(); renderRecent(); refreshEntries(); return true;
+  });
+}
+// One-tap: the last count is still accurate — record it as this count.
+function rowSame(i){
+  if(_rowSaving) return; _rowSaving=true;
+  const loc=composeRowLoc(); const r=logForLoc(loc)[i];
+  if(!r){ _rowSaving=false; return; }
+  const entry=rowEntryFor(r, loc, r.qty);
+  if(entry.total<=0){ _rowSaving=false; toast('Nothing to record (0)','err'); return; }
+  toast('Saving…');
+  appendCounted(entry).then(function(){ _rowSaving=false; toast('Counted '+entry.total.toLocaleString()+' · '+esc(entry.code)); renderRowPanel(); })
+    .catch(function(e){ _rowSaving=false; toast('Save failed — try again','err'); console.error(e); });
+}
+// Open the normal count card pre-filled with this product + location + last split, to adjust.
+function rowEdit(i){
+  const loc=composeRowLoc(); const r=logForLoc(loc)[i]; if(!r) return;
+  const it=lookupForProduct(r.product,r.desc);
+  const total=Number(r.qty)||0; const per=it?Number(it.perUnit)||0:0;
+  let full=0, extra=total; if(per>0){ full=Math.floor(total/per); extra=total-full*per; }
+  const item = it ? Object.assign({}, it) : { code:r.product, desc:r.desc||r.product, weight:'', type:'', perUnit:'', __manual:true };
+  item.__prefill = { loc: loc, full: full, extra: extra };
+  selectItem(item);
+}
+function rowSkip(i){ const loc=composeRowLoc(); rowSkips[rowSkipKey(loc,i)]=1; renderRowPanel(); }
+// Add something the log didn't list: jump to Scan with this building preset.
+function rowAddProduct(){
+  const loc=composeRowLoc(); const p=parseLoc(loc);
+  if(p.bldg){ state.building=p.bldg; const tb=$('topBldg'); if(tb) tb.value=p.bldg; }
+  setMode('scan');
+  toast(p.num?('Scan/search the product to add at '+esc(loc)):'Scan or search the product to add');
+}
+
+/* ---- pop-up calculator ---- */
+// Remembers which count box was last active, so "Use this number" drops the
+// result straight back into it.
+var lastCountField=null;
+var calcLast=null;                         // the most recent computed result
+const CALC_HIST_KEY='invCalcHist_v1';      // { personName: ["12*24 = 288", ...] }
+function calcPerson(){ return ($('counterName') && $('counterName').value.trim()) || '—'; }
+function calcHistAll(){ try{ return JSON.parse(localStorage.getItem(CALC_HIST_KEY)||'{}'); }catch(_){ return {}; } }
+function calcHistFor(p){ const a=calcHistAll()[p]; return Array.isArray(a)?a:[]; }
+function calcHistPush(entry){
+  const all=calcHistAll(), p=calcPerson();
+  const list=(Array.isArray(all[p])?all[p]:[]).filter(x=>x!==entry); // no duplicates
+  list.unshift(entry);
+  all[p]=list.slice(0,3);                  // keep the last 3 per person
+  try{ localStorage.setItem(CALC_HIST_KEY, JSON.stringify(all)); }catch(_){}
+}
+var _lockY=0;
+function lockScroll(){
+  _lockY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.top = (-_lockY)+'px';               // pin the page exactly where it is (no jump)
+  document.documentElement.classList.add('modal-lock');
+}
+function unlockScroll(){
+  document.documentElement.classList.remove('modal-lock');
+  document.body.style.top = '';
+  window.scrollTo(0, _lockY);                             // restore instantly, no animation
+}
+function openCalc(){
+  calcClear();                 // always start on a fresh, zeroed calculator
+  $('calcModal').classList.remove('hide');
+  lockScroll();
+  renderCalcHist();
+}
+function closeCalc(){
+  $('calcModal').classList.add('hide');
+  unlockScroll();
+  // Bring the keypad back to the box you were on — without focusing (which would scroll the page).
+  // Only when a count card is actually open (not for the scratch calculator in Count-by-row).
+  if(state.current && $(activeNumField)) kpShow();
+}
+function calcPress(ch){ $('calcDisplay').value+=ch; }
+function calcBack(){ const d=$('calcDisplay'); d.value=d.value.slice(0,-1); }
+function calcClear(){ $('calcDisplay').value=''; $('calcResult').textContent=''; calcLast=null; }
+// Evaluate only arithmetic; reject anything with letters or other characters.
+function calcEval(raw){
+  const expr=String(raw).replace(/×/g,'*').replace(/÷/g,'/').trim();
+  if(!expr) return null;
+  if(!/^[0-9+\-*/(). %]+$/.test(expr)) return null;
+  try{
+    const v=Function('"use strict";return ('+expr+')')();
+    if(typeof v!=='number' || !isFinite(v)) return null;
+    return Math.round(v*1e6)/1e6;          // trim float noise
+  }catch(_){ return null; }
+}
+function calcEquals(){
+  const d=$('calcDisplay'); const expr=d.value.trim();
+  const v=calcEval(expr);
+  if(v===null){ $('calcResult').textContent='?'; calcLast=null; return; }
+  calcLast=v;
+  $('calcResult').textContent=v.toLocaleString();
+  d.value=String(v);                       // let them keep calculating from the result
+  calcHistPush(expr+' = '+v.toLocaleString());
+  renderCalcHist();
+}
+function calcUse(){
+  // Make sure we have a value even if they didn't hit "="
+  let v=calcLast;
+  if(v===null){ v=calcEval($('calcDisplay').value); }
+  if(v===null){ $('calcResult').textContent='?'; return; }
+  // Fill whichever box the keypad is on (falls back to the last count box used).
+  const id = (activeNumField && $(activeNumField)) ? activeNumField : ((lastCountField && $(lastCountField)) ? lastCountField : null);
+  const target = id ? $(id) : null;
+  if(target){
+    target.value=String(v);
+    target.dispatchEvent(new Event('input',{bubbles:true})); // fires calc() for the total
+    activeNumField=id;
+    closeCalc();                                             // refocuses the box → keypad returns
+  } else {
+    // No count box open — just show it so they can read/type it.
+    $('calcResult').textContent=Number(v).toLocaleString()+'  (open an item first to auto-fill)';
+  }
+}
+function renderCalcHist(){
+  const box=$('calcHist'); const list=calcHistFor(calcPerson());
+  if(!list.length){ box.innerHTML='<div class="none">No calculations yet.</div>'; return; }
+  box.innerHTML=list.map(function(item){
+    const parts=item.split(' = ');
+    const rv=(parts.length>1?parts[parts.length-1]:item).replace(/,/g,'');
+    return '<div class="h" onclick="reuseCalc(\''+esc(rv)+'\')">'
+         +   '<span class="ex">'+esc(parts[0])+'</span><span class="rv">'+esc(rv)+'</span></div>';
   }).join('');
 }
-function updateProdFlag(){
-  const el=$('prodFlag'); if(!el) return;
-  const to=$('f_to')?$('f_to').value:'';
-  const b=BUILDINGS.find(function(x){ return x.name===to; });
-  el.classList.toggle('hide', !(b && b.production));
+function reuseCalc(v){ const d=$('calcDisplay'); d.value=String(v); calcLast=calcEval(String(v)); $('calcResult').textContent=Number(v).toLocaleString(); }
+
+/* Open the card for a scanned/picked item — scan then enter, no pre-entry prompts. */
+function chooseItem(it){ selectItem(Object.assign({}, it)); }
+
+/* ---- edit / delete an existing entry ---- */
+function editEntry(i){
+  const e = activeEntries()[i];
+  if(!e) return;
+  $('notFound').classList.add('hide');
+  closeSearch();
+  if(state.dept==='metals') setMetalKind(e.category==='Ends'?'ends':'cans'); // show the right fields
+  const it = { code:e.code, desc:e.desc, weight:e.weight, type:e.type, perUnit:e.per };
+  selectItem(it, {index:i});
+  setTimeout(()=>{ const c=$('cardMount'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'}); }, 60);
+}
+function deleteEntry(){
+  if(state.editIndex==null) return;
+  const ref = activeEntries()[state.editIndex];
+  if(!ref) return;
+  if(!confirm('Delete this entry?\n\n'+(ref.desc||ref.code||'')+'  ·  '+(Number(ref.total)||0).toLocaleString()+' units\n\nThis removes the row from the Google Sheet.')) return;
+  const del=document.querySelector('.cardDel'); if(del) del.textContent='Deleting…';
+  callApi('deleteEntry', [{__tab:ref.__tab, __row:ref.__row}])
+    .then(function(){
+      toast('Entry deleted');
+      state.editIndex=null; clearCardOnly();
+      refreshEntries();   // rows shift after a delete — re-read fresh row numbers
+      focusScan();
+    })
+    .catch(function(err){ if(del) del.textContent='Delete'; toast('Delete failed — try again','err'); console.error(err); });
 }
 
 /* ---- item card ---- */
-function selectItem(it){
+function selectItem(it, edit){
   $('notFound').classList.add('hide');
   state.current=it;
+  state.editIndex = edit ? edit.index : null;
+  if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.add('hide'); }   // focus on the card while editing
+  const ed = state.editIndex!=null ? (activeEntries()[state.editIndex]||null) : null;
+  if(!ed){ state.building=''; } else if(ed.from){ state.building=ed.from; }   // From tiles start fresh on a new scan
+  state.to = ed ? (ed.to||'') : '';                                           // To tiles start unpicked on a new scan
+  state.staged = ed ? /staged/i.test(ed.flags||'') : false;                   // reset the staged toggle per card
   const dept=state.dept, kind=state.metalKind;
   const isPlastic=dept==='plastic'||dept==='plastics';
   const perLabel = dept==='plastics' ? 'Per Pallet / Box' : 'Per Pallet';
   const codeLabel = dept==='plastics' ? 'Item #' : (kind==='ends'?'Label Code':'Label Number');
 
-  const inputVal = v => v==='INPUT' ? '' : (v||'');
-  const inputPh  = v => v==='INPUT' ? 'enter value' : '';
+  const inputVal = v => isCheckValue(v) ? '' : (v||'');
+  const inputPh  = v => isCheckValue(v) ? 'enter value' : '';
+
+  // Per Pallet/Box (plastics column D, also metals Per Pallet) can be a check value — e.g. a cell
+  // marked INPUT or !!!ADD!!! means the per-unit count is not fixed and the counter must enter it.
+  // When so, show the field empty with the prompt instead of printing the sentinel as a number.
+  const perIsCheck = isCheckValue(it.perUnit);
+  const perValStr  = perIsCheck ? '' : (it.perUnit??'');
+  const perPh      = perIsCheck ? (checkPrompt(it.perUnit)||'enter value')
+                                : (dept==='plastics' ? 'per pallet / box' : 'per pallet');
+
+  // Count-by-row can pre-fill a new card with the last count's location + full/extra split.
+  const pre = (!ed && it.__prefill) ? it.__prefill : null;
+  const locParts = ed ? parseLoc(ed.loc) : (pre&&pre.loc ? parseLoc(pre.loc) : { bldg: state.building, num:'' });
+  const vBldg = locParts.bldg;   // editing shows the entry's building; a new scan uses the current one
+  const vNum  = esc(locParts.num || '');
+  const toOpts = buildingNameOptions('');   // "To building" options (movement destination)
+  const vFull = ed ? (Number(ed.full)||0) : (pre?(Number(pre.full)||0):0);
+  const vExtra= ed ? (Number(ed.extra)||0) : (pre?(Number(pre.extra)||0):0);
 
   let extraFields='';
   if(dept==='metals' && kind==='ends'){
     extraFields=`
-      <div class="fld"><label>Weight ${it.weight==='INPUT'?'<span class="tag">enter</span>':''}</label>
-        <input id="f_weight" class="mono" value="${esc(inputVal(it.weight))}" placeholder="${inputPh(it.weight)}"></div>
-      <div class="fld"><label>Type ${it.type==='INPUT'?'<span class="tag">enter</span>':''}</label>
-        <input id="f_type" class="mono" value="${esc(inputVal(it.type))}" placeholder="${inputPh(it.type)}"></div>`;
+      <div class="fld"><label>Weight${isCheckValue(it.weight)?' <span class="checktag">enter</span>':''}</label>
+        <input id="f_weight" class="mono" inputmode="none" readonly value="${esc(inputVal(it.weight))}" placeholder="${inputPh(it.weight)||'enter weight'}" onfocus="tkBind('f_weight')" onblur="tkOnBlur()"></div>
+      <div class="fld"><label>Type${isCheckValue(it.type)?' <span class="checktag">enter</span>':''}</label>
+        <input id="f_type" class="mono" inputmode="none" readonly value="${esc(inputVal(it.type))}" placeholder="${inputPh(it.type)||'enter type'}" onfocus="tkBind('f_type')" onblur="tkOnBlur()"></div>`;
   } else if(dept==='plastics'){
     extraFields=`
-      <div class="fld full"><label>Type</label>
-        <input id="f_type" value="${esc(it.type||'')}"></div>`;
+      <div class="fld full"><label>Type${isCheckValue(it.type)?' <span class="checktag">enter</span>':''}</label>
+        <input id="f_type" inputmode="none" readonly value="${esc(inputVal(it.type))}" placeholder="${inputPh(it.type)||'enter type'}" onfocus="tkBind('f_type')" onblur="tkOnBlur()"></div>`;
   }
 
   $('cardMount').innerHTML=`
    <div class="card">
     <div class="card-head">
+      ${ed?`<button class="cardDel" onclick="deleteEntry()">Delete</button>`:''}
       <div class="code">${it.code?esc(it.code):'— no barcode —'}</div>
       <div class="desc">${esc(it.desc)}</div>
     </div>
     <div class="card-body">
       <div class="grid">
         <div class="fld full"><label>${codeLabel}</label><input id="f_code" class="mono" value="${esc(it.code||'')}"></div>
-        <div class="fld full"><label>Description</label><input id="f_desc" value="${esc(it.desc)}"></div>
+        <div class="fld full"><label>Description</label><input id="f_desc" inputmode="none" readonly value="${esc(it.desc)}" onfocus="tkBind('f_desc')" onblur="tkOnBlur()"></div>
         ${extraFields}
-        <div class="fld"><label>${perLabel}</label><input id="f_per" class="mono" inputmode="numeric" value="${it.perUnit??''}" oninput="calc()"></div>
-        <div class="fld"><label>To location</label><input id="f_loc" placeholder="optional e.g. S-3"></div>
 
-        <div class="fld full"><label>From building</label>
-          <select id="f_from" onchange="updateProdFlag()"><option value="">— pick —</option>${buildingOptions()}</select></div>
-        <div class="fld full"><label>To building</label>
-          <select id="f_to" onchange="updateProdFlag()"><option value="">— pick —</option>${buildingOptions()}</select></div>
-        <div class="prodflag hide" id="prodFlag">↻ Will be flagged: In Production</div>
+        <div class="step frombox" data-step="1">
+          <div class="steplbl"><span class="stepnum">1</span> From building <span class="fromhelp">where it's moving from</span></div>
+          <div id="fromTiles" class="frombldgs"></div>
+          <div id="fromNote" class="fromnote" hidden></div>
+        </div>
 
-        <div class="fld"><label>Full ${dept==='plastics'?'(pallets/boxes)':'(boxes)'}</label>
-          <input id="f_full" class="big" inputmode="numeric" value="0" oninput="calc()" onfocus="this.select()"></div>
-        <div class="fld"><label>Extra (loose)</label>
-          <input id="f_extra" class="big" inputmode="numeric" value="0" oninput="calc()" onfocus="this.select()"></div>
+        <div class="step" data-step="2" hidden>
+          <div class="steplbl"><span class="stepnum">2</span> Quantity to move</div>
+          <div class="fld full"><label>${perLabel}${perIsCheck?' <span class="checktag">enter</span>':''}</label><input id="f_per" class="mono" inputmode="none" readonly value="${esc(perValStr)}" placeholder="${esc(perPh)}" oninput="calc()" onfocus="this.select();kpBind('f_per')" onblur="kpOnBlur()"></div>
+          <div class="qtyrow">
+            <div class="fld"><label>Full ${dept==='plastics'?'(pallets/boxes)':'(boxes)'}</label>
+              <div class="biginput">
+                <input id="f_full" class="big" inputmode="none" readonly enterkeyhint="next" value="${vFull}" oninput="calc()" onfocus="this.select();lastCountField='f_full';kpBind('f_full')" onblur="kpOnBlur()" onkeydown="cardEnter(event,'f_extra')">
+              </div></div>
+            <div class="fld"><label>Extra (loose)</label>
+              <div class="biginput">
+                <input id="f_extra" class="big" inputmode="none" readonly enterkeyhint="done" value="${vExtra}" oninput="calc()" onfocus="this.select();lastCountField='f_extra';kpBind('f_extra')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();qtyNext();}">
+              </div></div>
+          </div>
+          <div class="total-strip"><span class="lbl">Total units to move</span>
+            <span class="val"><span id="totalVal">0</span><small>units</small></span></div>
+          <button type="button" class="btn primary stepnext" onclick="qtyNext()">Next \u2192 To building</button>
+        </div>
 
-        <div class="total-strip"><span class="lbl">Total units moved</span>
-          <span class="val"><span id="totalVal">0</span><small>units</small></span></div>
+        <div class="step" data-step="3" hidden>
+          <div class="steplbl"><span class="stepnum">3</span> To building <span class="fromhelp">where it's going</span></div>
+          <div id="toTiles" class="frombldgs"></div>
+          <div class="fld full loghint" id="prodHint" hidden style="margin-top:10px">\u21bb Will be flagged <b style="color:#B26A00">In Production</b></div>
+        </div>
+
+        <div class="step" data-step="4" hidden>
+          <div class="steplbl"><span class="stepnum">4</span> Staged for shipping?</div>
+          <div class="yesno" id="stagedSeg">
+            <button type="button" id="stagedNo" class="${state.staged?'':'on'}" onclick="setStaged(false)">No</button>
+            <button type="button" id="stagedYes" class="${state.staged?'on':''}" onclick="setStaged(true)">Yes</button>
+          </div>
+          <div class="fld full loghint" id="stagedHint"${state.staged?'':' hidden'} style="margin-top:10px">\ud83d\udce6 Will be marked <b style="color:#1b6fb3">Staged for Shipment</b></div>
+        </div>
       </div>
     </div>
-    <div class="actions">
+    <div class="actions step" data-step="5" hidden>
       <button class="btn ghost" onclick="clearCard()">Cancel</button>
-      <button class="btn primary" onclick="saveEntry()">✓ Save move</button>
+      <button class="btn primary" id="f_save" onclick="saveEntry()">${ed?'\u2713 Update':'\u2713 Save move'}</button>
     </div>
    </div>`;
   calc();
-  setTimeout(()=>$('f_full').focus(),80);
+  renderFromTiles();   // stock-filtered From buildings + this product's Production point
+  renderToTiles();     // destination buildings as tiles too
+  // Guided flow: a new scan starts on step 1 (From) and each step reveals the next as it's
+  // answered. Editing an existing entry reveals everything so any field can be changed.
+  if(ed){ revealStep(5); }
+  else { revealStep(1); }
+  setTimeout(()=>{
+    if(it.__manual && $('f_desc')){ $('f_desc').focus(); }   // manual add: fill the description first
+    else { const c=$('cardMount'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
+  },80);
+}
+// ---- guided stepper: reveal steps 1..n, jump the newest into view ----
+function revealStep(n){
+  const host=$('cardMount'); if(!host) return;
+  host.querySelectorAll('[data-step]').forEach(function(el){ if(Number(el.getAttribute('data-step'))<=n) el.hidden=false; });
+}
+function scrollStepIntoView(n){
+  const host=$('cardMount'); if(!host) return;
+  const t=host.querySelector('[data-step="'+n+'"]');
+  if(t) setTimeout(function(){ t.scrollIntoView({behavior:'smooth',block:'center'}); }, 70);
+}
+// Step 2 -> 3: require a quantity before moving on to the To building.
+function qtyNext(){
+  const per=asNum($('f_per')&&$('f_per').value), full=asNum($('f_full')&&$('f_full').value), extra=asNum($('f_extra')&&$('f_extra').value);
+  const total=Math.round(full*per+extra);
+  if(total<=0){ toast('Enter a quantity greater than 0','err'); const f=$('f_full'); if(f){ f.focus(); if(f.select) f.select(); } return; }
+  kpHide();
+  revealStep(3); scrollStepIntoView(3);
 }
 function calc(){
   if(!$('f_per')) return;
   const per=asNum($('f_per').value), full=asNum($('f_full').value), extra=asNum($('f_extra').value);
   const total=Math.round(full*per+extra);
   $('totalVal').textContent=total.toLocaleString();
+  updateLogHint();   // live delta vs. the last logged count
 }
-function clearCardOnly(){ $('cardMount').innerHTML=''; state.current=null; }
-function clearCard(){ clearCardOnly(); $('notFound').classList.add('hide'); focusScan(); }
+/* Focus a box (the onfocus handler shows the pad and scrolls it into view). */
+function nextField(id){ const el=$(id); if(el){ kpBind(id); el.focus(); if(el.select) el.select(); } }
+/* Height of whichever docked keyboard is currently up (0 if none). */
+function keypadH(){
+  const kp=$('cardKeypad'), tk=$('textKeypad'), pp=$('pinpad');
+  if(kp && kp.classList.contains('show')) return kp.getBoundingClientRect().height;
+  if(tk && tk.classList.contains('show')) return tk.getBoundingClientRect().height;
+  if(pp && pp.classList.contains('show')) return pp.getBoundingClientRect().height;
+  return 0;
+}
+/* Scroll just enough to sit the anchor's bottom right above the docked keyboard — instead of
+   centering, which on a tall card + keypad padding jumps the page way too far down. For the
+   location box we anchor on the total strip so the location field AND the running total (plus the
+   boxes above) stay visible together. */
+function scrollFieldUp(el, anchorSel){
+  if(!el) return;
+  const anchor = anchorSel ? (document.querySelector(anchorSel)||el) : el;
+  const bottom = window.innerHeight - keypadH() - 14;
+  const r = anchor.getBoundingClientRect();
+  if(r.bottom > bottom || r.top < 8){ window.scrollBy({top: r.bottom - bottom, behavior:'smooth'}); }
+}
+
+/* ---- on-screen number pad on the card ---- */
+// iOS won't open its keyboard on the programmatic focus that follows a scan, so the count boxes
+// (Per/Full/Extra/Location) use inputmode=none and this docked keypad instead. Buttons fire on a
+// single pointerdown (no mouse+touch double-firing) and edit whichever box is active.
+var activeNumField='f_full';
+var _kpFresh=false;   // when true, the next digit replaces the field (used for the row # box)
+function kpIsField(id){ return id==='f_per'||id==='f_full'||id==='f_extra'||id==='f_loc'||id==='rowNum'; }
+function kpShow(){ tkHide(); $('cardKeypad').classList.add('show'); $('cardKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('kp-open'); }
+function kpHide(){ kpBackStop(); $('cardKeypad').classList.remove('show'); $('cardKeypad').setAttribute('aria-hidden','true'); document.body.classList.remove('kp-open'); }
+function kpBind(id){
+  if(!kpIsField(id)) return;
+  activeNumField=id;
+  _kpFresh = (id==='rowNum');   // start fresh: first digit replaces the old row number
+  const l=$('kpField'); if(l){ l.textContent=({f_per:'Per unit',f_full:'Full',f_extra:'Extra',f_loc:'Location #',rowNum:'Row #'})[id]; }
+  kpShow();
+  const el=$(id); if(el){ setTimeout(()=>scrollFieldUp(el, id==='f_loc'?'.total-strip':null),40); } // keep it above the pad
+}
+// Called on box blur AND globally on focusin: keep the pad only while focus stays on a count box
+// or on the keypad itself; otherwise tuck it away.
+function kpOnBlur(){
+  setTimeout(function(){
+    if(!$('calcModal').classList.contains('hide')) return;   // calculator is open — leave the pad be
+    const a=document.activeElement;
+    if(a && (kpIsField(a.id) || $('cardKeypad').contains(a))) return;
+    kpHide();
+  },0);
+}
+document.addEventListener('focusin', function(ev){
+  const a=ev.target;
+  if(!$('cardKeypad').classList.contains('show')) return;
+  if(!$('calcModal').classList.contains('hide')) return;     // calculator is open — leave the pad be
+  if(a && (kpIsField(a.id) || $('cardKeypad').contains(a))) return;
+  kpHide();
+});
+function kpTap(e,k){
+  if(e){ e.preventDefault(); }
+  const el=$(activeNumField); if(!el) return;
+  if(k==='next'){ kpAdvance(); return; }
+  if(_kpFresh){ el.value=''; _kpFresh=false; }              // first digit clears what was there
+  el.value = (el.value==='0' ? '' : (el.value||'')) + k;   // replace the placeholder 0 on first digit
+  el.dispatchEvent(new Event('input',{bubbles:true}));      // fires calc() for the total
+}
+function kpAdvance(){
+  if(activeNumField==='rowNum'){ const el=$('rowNum'); if(el) el.blur(); loadRow(); return; }
+  if(activeNumField==='f_per'){ nextField('f_full'); }
+  else if(activeNumField==='f_full'){ nextField('f_extra'); }
+  else if(activeNumField==='f_extra'){ nextField('f_loc'); }
+  else { saveEntry(); }
+}
+/* press-and-hold backspace: one delete on tap, then rapid delete while held */
+var kpRepeatTO=null, kpRepeatIV=null;
+function kpDoBack(){ _kpFresh=false; const el=$(activeNumField); if(!el||!el.value){ kpBackStop(); return; } el.value=el.value.slice(0,-1); el.dispatchEvent(new Event('input',{bubbles:true})); }
+function kpBackStart(e){ if(e){ e.preventDefault(); } kpDoBack(); clearTimeout(kpRepeatTO); kpRepeatTO=setTimeout(function(){ kpRepeatIV=setInterval(kpDoBack,60); },400); }
+function kpBackStop(){ clearTimeout(kpRepeatTO); clearInterval(kpRepeatIV); kpRepeatIV=null; }
+function kpOpenCalc(e){ if(e){ e.preventDefault(); } openCalc(); }
+// Visual press feedback: briefly darken/shrink any keypad or calculator button that's pressed.
+document.addEventListener('pointerdown', function(ev){
+  const b = ev.target.closest('.kp-grid button, .tk-grid button, .calc-grid button, .kp-calc');
+  if(!b) return;
+  b.classList.add('is-press');
+  setTimeout(function(){ b.classList.remove('is-press'); }, 160);
+});
+
+/* ---- on-screen PIN pad (sign-in / create-account / approvals) ----
+   The PIN boxes are inputmode=none + readonly so no phone keyboard appears; this docked numeric
+   pad drives them. Buttons fire on pointerdown and preventDefault so focus stays on the box. */
+var activePinField=null;
+function pinIsField(id){ return id==='loginPin'||id==='suPin'||id==='suPin2'||id==='mgrPin'; }
+function pinShow(){ kpHide(); tkHide(); $('pinpad').classList.add('show'); $('pinpad').setAttribute('aria-hidden','false'); document.body.classList.add('pin-open'); }
+function pinHide(){ const p=$('pinpad'); if(!p) return; p.classList.remove('show'); p.setAttribute('aria-hidden','true'); document.body.classList.remove('pin-open'); }
+function pinBind(id){
+  if(!pinIsField(id)) return;
+  activePinField=id;
+  const l=$('pinField'); if(l){ l.textContent=({loginPin:'PIN',suPin:'new PIN',suPin2:'PIN again',mgrPin:'manager PIN'})[id]||'PIN'; }
+  pinShow();
+  const el=$(id); if(el){ setTimeout(function(){ scrollFieldUp(el); },40); }
+}
+function pinOnBlur(){
+  setTimeout(function(){
+    const a=document.activeElement;
+    if(a && (pinIsField(a.id) || $('pinpad').contains(a))) return;
+    pinHide();
+  },0);
+}
+// If focus lands anywhere other than a PIN box or the pad itself, tuck the pad away.
+document.addEventListener('focusin', function(ev){
+  if(!$('pinpad').classList.contains('show')) return;
+  const a=ev.target;
+  if(a && (pinIsField(a.id) || $('pinpad').contains(a))) return;
+  pinHide();
+});
+function pinTap(e,k){
+  if(e){ e.preventDefault(); }
+  const el=$(activePinField); if(!el) return;
+  if(k==='go'){ pinGo(); return; }
+  if((el.value||'').length>=4) return;                 // 4-digit cap
+  el.value=(el.value||'')+k;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  if(el.value.length===4 && activePinField!=='suPin2') pinGo();  // auto-advance/submit at 4 digits
+}
+function pinBack(e){
+  if(e){ e.preventDefault(); }
+  const el=$(activePinField); if(!el||!el.value) return;
+  el.value=el.value.slice(0,-1); el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function pinGo(){
+  const id=activePinField;
+  if(id==='loginPin'){ doLogin(); }
+  else if(id==='mgrPin'){ loadPending(); }
+  else if(id==='suPin'){ const n=$('suPin2'); if(n){ pinBind('suPin2'); n.focus(); } }
+  else if(id==='suPin2'){ doSignup(); }
+}
+
+/* ---- on-screen alphanumeric keyboard for text fields ----
+   The check-value prompt and the Weight/Type boxes need letters as well as digits, and the paired
+   scanner suppresses the iOS soft keyboard, so those fields use inputmode=none and this docked
+   keyboard. It's a sibling of the numeric pad; only one of the two is ever shown at a time. */
+var activeTextField=null;
+var TK_ROWS=[
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L']
+];
+var TK_ROW4=['Z','X','C','V','B','N','M'];
+function tkBuild(){
+  const g=$('tkGrid'); if(!g||g.dataset.built) return; g.dataset.built='1';
+  const key=k=>'<button type="button" onpointerdown="tkTap(event,\''+k+'\')">'+(k===' '?'space':k)+'</button>';
+  let html=TK_ROWS.map(function(row){ return '<div class="tk-row">'+row.map(key).join('')+'</div>'; }).join('');
+  // row 4: Z–M then backspace on the right (native position)
+  html+='<div class="tk-row">'+TK_ROW4.map(key).join('')
+    + '<button type="button" class="tk-back" onpointerdown="tkBackStart(event)" onpointerup="tkBackStop()" onpointerleave="tkBackStop()" onpointercancel="tkBackStop()" aria-label="Delete (hold to clear)">⌫</button>'
+    + '</div>';
+  // bottom: symbols, wide space, Done
+  html+='<div class="tk-row tk-util">'
+    + key('-') + key('/') + key('.')
+    + '<button type="button" class="tk-wide" onpointerdown="tkTap(event,\' \')">space</button>'
+    + '<button type="button" class="tk-go" onpointerdown="tkDone(event)" aria-label="Done">Done</button>'
+    + '</div>';
+  g.innerHTML=html;
+}
+function tkIsField(id){ return id==='modalInput'||id==='f_desc'||id==='f_weight'||id==='f_type'||id==='searchInput'; }
+function tkShow(){ tkBuild(); kpHide(); $('textKeypad').classList.add('show'); $('textKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('tk-open'); }
+function tkHide(){ tkBackStop(); $('textKeypad').classList.remove('show'); $('textKeypad').setAttribute('aria-hidden','true'); document.body.classList.remove('tk-open'); }
+function tkBind(id){
+  if(!tkIsField(id)) return;
+  activeTextField=id;
+  const l=$('tkField'); if(l){ l.textContent=({modalInput:'value',f_desc:'Description',f_weight:'Weight',f_type:'Type',searchInput:'Search'})[id]||'value'; }
+  tkShow();
+  const el=$(id); if(el){ setTimeout(()=>scrollFieldUp(el),40); }
+}
+function tkOnBlur(){
+  setTimeout(function(){
+    const a=document.activeElement;
+    if(a && (tkIsField(a.id) || $('textKeypad').contains(a))) return;
+    tkHide();
+  },0);
+}
+document.addEventListener('focusin', function(ev){
+  if(!$('textKeypad').classList.contains('show')) return;
+  const a=ev.target;
+  if(a && (tkIsField(a.id) || $('textKeypad').contains(a))) return;
+  tkHide();
+});
+function tkTap(e,ch){
+  if(e){ e.preventDefault(); }
+  const el=$(activeTextField); if(!el) return;
+  el.value=(el.value||'')+ch;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+var tkRepeatTO=null, tkRepeatIV=null;
+function tkDoBack(){ const el=$(activeTextField); if(!el||!el.value){ tkBackStop(); return; } el.value=el.value.slice(0,-1); el.dispatchEvent(new Event('input',{bubbles:true})); }
+function tkBackStart(e){ if(e){ e.preventDefault(); } tkDoBack(); clearTimeout(tkRepeatTO); tkRepeatTO=setTimeout(function(){ tkRepeatIV=setInterval(tkDoBack,60); },400); }
+function tkBackStop(){ clearTimeout(tkRepeatTO); clearInterval(tkRepeatIV); tkRepeatIV=null; }
+function tkDone(e){
+  if(e){ e.preventDefault(); }
+  if(activeTextField==='modalInput'){ const ok=$('modalOk'); if(ok) ok.click(); return; }
+  if(activeTextField==='searchInput'){ const el=$('searchInput'); if(el) el.blur(); tkHide(); return; }
+  tkAdvance();
+}
+// Done on a card text field moves to the next present text field, then hands off to the number
+// pad starting at Per Pallet (so manual entries flow Desc -> Weight -> Type -> Per -> ... -> save).
+function tkAdvance(){
+  const order=['f_desc','f_weight','f_type'];
+  const idx=order.indexOf(activeTextField);
+  for(let i=idx+1;i<order.length;i++){ const el=$(order[i]); if(el){ el.focus(); if(el.select) el.select(); setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),40); return; } }
+  nextField('f_per');   // switches to the numeric keypad
+}
+
+/* Enter moves through the boxes: Full -> Extra -> Location -> save */
+function cardEnter(e, target){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  if(target==='save'){ saveEntry(); return; }
+  nextField(target);
+}
+function clearCardOnly(){ kpHide(); $('cardMount').innerHTML=''; state.current=null; state.editIndex=null;
+  if(state.mode==='row'){ const rp=$('rowPanel'); if(rp) rp.classList.remove('hide'); } }
+function clearCard(){ clearCardOnly(); $('notFound').classList.add('hide'); if(state.mode==='row'){ renderRowPanel(); } else { focusScan(); } }
 
 /* ---- save ---- */
-function saveEntry(){
+var _saving=false;   // in-flight guard so a double-tap can't save the same count twice
+async function saveEntry(){
+  if(_saving) return;
+  _saving=true;
   const per=asNum($('f_per').value), full=asNum($('f_full').value), extra=asNum($('f_extra').value);
   const total=Math.round(full*per+extra);
-  const from=($('f_from')?.value||''), to=($('f_to')?.value||'');
-  if(total<=0){ toast('Enter a quantity greater than 0','err'); return; }
-  if(!from){ toast('Pick a From building','err'); return; }
-  if(!to){ toast('Pick a To building','err'); return; }
-  if(from===to){ toast('From and To must differ','err'); return; }
+  const from=state.building||'';
+  const to=state.to||'';
+  if(total<=0){ toast('Enter a quantity greater than 0','err'); _saving=false; return; }
+  if(!from){ toast('Pick the From building (tap a tile)','err'); _saving=false; return; }
+  if(!to){ toast('Pick a To building','err'); _saving=false; return; }
+  if(from===to){ toast('From and To must differ','err'); _saving=false; return; }
+  const counter=$('counterName').value.trim()||'-';
   const code=($('f_code')?.value||'').trim();
   const desc=($('f_desc')?.value||'').trim();
   const weight=($('f_weight')?.value||'').trim();
   const type=($('f_type')?.value||'').trim();
-  const category = state.dept==='plastics'?'Plastics':'Metals';
+  const category=(state.dept==='plastics'?'Plastics':'Metals');
   const noteBits=[full+'x'+per+(extra?('+'+extra):'')];
   if(type) noteBits.push('Type '+type);
   if(weight) noteBits.push('Wt '+weight);
-  const movement={
-    user: $('counterName').value.trim(),
-    barcode: code, product: code || desc, desc: desc, kind: category,
-    entryMethod: 'Pallets', qtyEntered: full, unitsPerPallet: per, qtyEach: total,
-    fromBuilding: from, fromLocation: '', toBuilding: to,
-    toLocation: ($('f_loc')?.value||'').trim(),
-    note: noteBits.join(' | '),
-    eventDate: new Date().toISOString().slice(0,10)
-  };
-  const btn = document.querySelector('.btn.primary');
+  const movement={ user:counter, barcode:code, product:code||desc, desc:desc, kind:category,
+    entryMethod:'Pallets', qtyEntered:full, unitsPerPallet:per, qtyEach:total,
+    fromBuilding:from, toBuilding:to, staged:!!state.staged, note:noteBits.join(' | '),
+    eventDate:new Date().toISOString().slice(0,10) };
+  const btn=$('f_save'); const btnLabel=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='Saving...'; }
-  callApi('logMovement', [movement])
-    .then(function(res){
-      const flags=(res&&res.flags)||'';
-      activeEntries().unshift({code:code, desc:desc, category:category, per:per, full:full, extra:extra, total:total, from:from, to:to, flags:flags, counter:movement.user||'-'});
-      renderRecent();
-      toast('Saved \u00b7 '+total.toLocaleString()+' units'+(flags?' \u00b7 '+flags:''));
-      clearCardOnly(); focusScan();
-    })
-    .catch(function(err){
-      if(btn){ btn.disabled=false; btn.textContent='\u2713 Save move'; }
-      toast('Save failed - try again','err'); console.error(err);
-    });
+  callApi('logMovement',[movement]).then(function(res){
+    _saving=false;
+    const flags=(res&&res.flags)||'';
+    // Stack this movement onto the live on-hand right away (no round-trip needed for the next scan).
+    MOVES.push({ product:code||desc, barcode:code, desc:desc, kind:category, qtyEach:total, fromBuilding:from, toBuilding:to, staged:!!state.staged, voided:false });
+    activeEntries().unshift({code:code,desc:desc,category:category,per:per,full:full,extra:extra,total:total,from:from,to:to,flags:flags,counter:counter});
+    persistSession(); renderRecent();
+    toast('Saved \u00b7 '+total.toLocaleString()+' units'+(flags?' \u00b7 '+flags:''));
+    clearCardOnly(); focusScan();
+  }).catch(function(err){
+    _saving=false;
+    if(btn){ btn.disabled=false; btn.textContent=btnLabel||'\u2713 Save move'; }
+    toast('Save failed - try again','err'); console.error(err);
+  });
 }
 
+/* ---- load the counted list from the sheet (the source of truth) ---- *//* ---- load the counted list from the sheet (the source of truth) ---- */
+var _refreshing=false;
+function refreshEntries(){
+  return Promise.resolve();   // movements are an append-only log — nothing to pull back into the list
+  if(_refreshing) return Promise.resolve();
+  _refreshing=true;
+  const rb=$('refreshBtn'); if(rb) rb.textContent='Refreshing…';
+  return callApi('getEntries', []).then(function(res){
+    const rev = a => Array.isArray(a) ? a.slice().reverse() : [];   // sheet is oldest-first → newest-first
+    const cans=rev(res.cans), ends=rev(res.ends);
+    state.entries.plastics = rev(res.plastics);
+    state.entries.metals   = cans.concat(ends).sort((a,b)=> a.ts<b.ts?1:(a.ts>b.ts?-1:0));
+    persistSession();                 // keep a local cache for offline / crash fallback
+    if(state.dept) renderRecent();
+  }).catch(function(err){
+    console.error(err);
+    if(state.dept) renderRecent();    // fall back to the cached list
+    toast('Couldn’t reach the sheet — showing cached list','err');
+  }).finally(function(){
+    _refreshing=false;
+    const b=$('refreshBtn'); if(b) b.textContent='Refresh';
+  });
+}
 
 /* ---- recent list + export ---- */
 function renderRecent(){
   const list=activeEntries();
   $('sessCount').textContent=list.length;
-  $('exportBtn').classList.toggle('hide', list.length===0);
   const el=$('recentList');
   if(!list.length){ el.innerHTML='<div class="empty-recent">Saved moves will appear here after you save them.</div>'; return; }
   el.innerHTML=list.map(function(e){ return '<div class="entry"><div class="info">'
     +'<div class="c">'+esc(e.code||'no barcode')+' \u00b7 <span style="opacity:.7">'+esc(e.category)+'</span></div>'
     +'<div class="d">'+esc(e.desc)+'</div>'
-    +'<div class="m">'+esc(e.from)+' \u2192 '+esc(e.to)+(e.flags?' \u00b7 <span style="color:#B26A00;font-weight:700">'+esc(e.flags)+'</span>':'')+'</div>'
-    +'</div><div class="qty">'+e.total.toLocaleString()+'<small>UNITS</small></div></div>'; }).join('');
+    +'<div class="loc">'+esc(e.from||'?')+' \u2192 '+esc(e.to||'?')+(e.flags?' \u00b7 <span style="color:#B26A00;font-weight:700">'+esc(e.flags)+'</span>':'')+'</div>'
+    +'</div><div class="qty">'+(Number(e.total)||0).toLocaleString()+'<small>UNITS</small></div></div>'; }).join('');
+}
+function clearSession(){
+  const list=activeEntries();
+  if(list.length && !confirm('Clear the '+list.length+' item(s) in this session list?\n\nYour saved rows in the Google Sheet are NOT affected.')) return;
+  if(state.dept==='plastics') state.entries.plastics=[]; else state.entries.metals=[];
+  persistSession(); renderRecent(); focusScan();
 }
 function exportCSV(){
   const list=activeEntries(); if(!list.length) return;
   let header, rows;
   if(state.dept==='plastics'){
-    header=['Timestamp','Counter','Item #','Description','Type','Per Unit','Full','Extra','Total','Location'];
-    rows=list.map(e=>[e.ts,e.counter,e.code,e.desc,e.type,e.per,e.full,e.extra,e.total,e.loc]);
+    header=['Timestamp','Counter','Item #','Description','Type','Per Unit','Full','Extra','Location','Total'];
+    rows=list.map(e=>[e.ts,e.counter,e.code,e.desc,e.type,e.per,e.full,e.extra,e.loc,e.total]);
   }else{
-    header=['Timestamp','Counter','Category','Code','Description','Weight','Type','Per Unit','Full','Extra','Total','Location'];
-    rows=list.map(e=>[e.ts,e.counter,e.category,e.code,e.desc,e.weight,e.type,e.per,e.full,e.extra,e.total,e.loc]);
+    header=['Timestamp','Counter','Category','Code','Description','Weight','Type','Per Unit','Full','Extra','Location','Total'];
+    rows=list.map(e=>[e.ts,e.counter,e.category,e.code,e.desc,e.weight,e.type,e.per,e.full,e.extra,e.loc,e.total]);
   }
   const csv=[header,...rows].map(r=>r.map(c=>{
     const s=(c??'').toString(); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
@@ -542,17 +2155,134 @@ function exportCSV(){
 
 /* ---- load lookup data from the Sheet on startup ---- */
 function onData(payload){
-  DATA = (payload && payload.lookups) ? payload.lookups : payload;   // bootstrap -> {lookups, buildings}
-  BUILDINGS = (payload && payload.buildings) ? payload.buildings : [];
-  buildIndex();
-  document.getElementById('landingFoot').textContent =
-    (DATA.ends.length+DATA.cans.length+DATA.plastics.length)+' items · '+BUILDINGS.length+' buildings loaded';
+  DATA = payload; buildIndex();
+  const foot=document.getElementById('landingFoot');
+  if(foot) foot.textContent = allProductCount().toLocaleString()+' products \u00b7 '+BUILDINGS.length+' buildings loaded';
+  updateHints();
 }
 function onDataFail(err){
-  document.getElementById('landingFoot').textContent = 'Could not load — reload the page.';
+  const foot=document.getElementById('landingFoot'); if(foot) foot.textContent='Could not load item lists — reload the page.';
+  const hint=$('scanCountHint'); if(hint) hint.textContent='Could not load products — reload the page.';
+  toast('Could not load products — reload','err');
   console.error(err);
 }
-callApi('bootstrap', []).then(onData).catch(onDataFail);
+/* ================= accounts: sign-in / create / manager approvals ================= */
+var AUTH=null, USERS=[];
+function normNameJs(s){ return (s||'').toString().trim().toLowerCase(); }
+function loadUser(){ try{ return JSON.parse(localStorage.getItem('cscUser')||'null'); }catch(e){ return null; } }
+function authMsg(id,msg,ok){ const el=$(id); if(el){ el.textContent=msg||''; el.className='auth-msg'+(ok?' ok':''); } }
+
+// Show exactly one top-level screen: 'login' | 'signup' | 'approvals' | 'app'.
+function showScreen(scr){
+  pinHide();   // never leave the PIN pad up across a screen change
+  ['login','signup','approvals'].forEach(function(id){ const el=$(id); if(el) el.hidden = (id!==scr); });
+  const inApp = (scr==='app');
+  const ub=$('userbar'); if(ub) ub.hidden=!inApp;
+  const vt=document.querySelector('.viewtabs'); if(vt) vt.hidden=!inApp;
+  if(inApp){ showView(state.view||'move'); }
+  else { const c=$('count'), inv=$('inventory'); if(c) c.hidden=true; if(inv) inv.hidden=true; }
+  if(scr==='login'){ const p=$('loginPin'); if(p) p.value=''; }
+}
+function populateUserDropdowns(){
+  const nm=$('loginName');
+  if(nm){ nm.innerHTML='<option value="">— select your name —</option>'+USERS.map(function(u){ return '<option>'+esc(u.name)+'</option>'; }).join(''); }
+  const mg=$('mgrName');
+  if(mg){ const mgrs=USERS.filter(function(u){ return /manager/i.test(u.role); });
+    mg.innerHTML='<option value="">— select —</option>'+mgrs.map(function(u){ return '<option>'+esc(u.name)+'</option>'; }).join(''); }
+}
+// Reflect the signed-in user across the UI (hidden counter field feeds every movement's User).
+function setUser(u){
+  AUTH=u;
+  // Do NOT cache the signed-in user anywhere — every visit must sign in again.
+  const ci=$('counterName'); if(ci) ci.value=u.name;
+  const un=$('userName'); if(un) un.textContent=u.name;
+  const ur=$('userRole'); if(ur) ur.textContent=(u.role?(' · '+u.role):'')+(u.department?(' · '+u.department):'')+(u.shift&&/plastic/i.test(u.department||'')?(' · Shift '+u.shift):'');
+  const wl=$('whoName'); if(wl) wl.textContent=u.name;
+  persistSession();
+}
+function doLogin(){
+  const name=($('loginName')||{}).value||'', pin=($('loginPin')||{}).value||'';
+  if(!name){ authMsg('loginMsg','Pick your name.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('loginMsg','Enter your 4-digit PIN.'); return; }
+  const btn=$('loginBtn'); if(btn){ btn.disabled=true; btn.textContent='Signing in…'; }
+  authMsg('loginMsg','');
+  callApi('authUser',[name,pin]).then(function(u){
+    setUser(u); const p=$('loginPin'); if(p) p.value='';
+    enterApp(); showScreen('app');
+  }).catch(function(e){ authMsg('loginMsg', (e&&e.message)||'Sign-in failed'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Sign in'; } });
+}
+function logout(){
+  AUTH=null; try{ localStorage.removeItem('cscUser'); }catch(e){}
+  const ci=$('counterName'); if(ci) ci.value='';
+  clearCardOnly();
+  const ln=$('loginName'); if(ln) ln.value='';
+  showScreen('login');
+}
+function onSuDept(){ const isPl=/plastic/i.test((($('suDept')||{}).value)||''); const row=$('suShiftRow'); if(row) row.hidden=!isPl; }
+function doSignup(){
+  const name=(($('suName')||{}).value||'').trim(), dept=($('suDept')||{}).value||'', role=($('suRole')||{}).value||'';
+  const pin=($('suPin')||{}).value||'', pin2=($('suPin2')||{}).value||'';
+  const shift=/plastic/i.test(dept)?(($('suShift')||{}).value||'1'):'1';
+  if(!name){ authMsg('suMsg','Enter your full name.'); return; }
+  if(!dept){ authMsg('suMsg','Pick a department.'); return; }
+  if(!role){ authMsg('suMsg','Pick a role.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('suMsg','PIN must be 4 digits.'); return; }
+  if(pin!==pin2){ authMsg('suMsg','PINs don’t match.'); return; }
+  const btn=$('suBtn'); if(btn){ btn.disabled=true; btn.textContent='Creating…'; }
+  authMsg('suMsg','');
+  callApi('signupUser',[{name:name,department:dept,shift:shift,role:role,pin:pin}]).then(function(){
+    ['suName','suPin','suPin2'].forEach(function(id){ const el=$(id); if(el) el.value=''; });
+    const d=$('suDept'); if(d) d.value=''; const r=$('suRole'); if(r) r.value=''; onSuDept();
+    authMsg('suMsg','✓ Submitted. A manager must approve before you can sign in.', true);
+  }).catch(function(e){ authMsg('suMsg', (e&&e.message)||'Could not create account'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Create account'; } });
+}
+var _mgr=null, _pending=[];
+function loadPending(){
+  const name=($('mgrName')||{}).value||'', pin=($('mgrPin')||{}).value||'';
+  if(!name){ authMsg('mgrMsg','Pick your manager name.'); return; }
+  if(!/^\d{4}$/.test(pin)){ authMsg('mgrMsg','Enter your PIN.'); return; }
+  const btn=$('mgrBtn'); if(btn){ btn.disabled=true; btn.textContent='Loading…'; }
+  authMsg('mgrMsg','');
+  callApi('listPending',[name,pin]).then(function(list){
+    _mgr={name:name,pin:pin}; renderPending(list||[]);
+    authMsg('mgrMsg', (list&&list.length)?'':'No accounts awaiting approval.', true);
+  }).catch(function(e){ _mgr=null; renderPending([]); authMsg('mgrMsg', (e&&e.message)||'Sign-in failed'); })
+    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='Load pending accounts'; } });
+}
+function renderPending(list){
+  _pending=list||[];
+  const box=$('pendingList'); if(!box) return;
+  box.innerHTML=_pending.map(function(u,i){
+    return '<div class="prow"><div class="pinfo"><b>'+esc(u.name)+'</b><span>'+esc(u.department||'')
+      +(u.shift&&/plastic/i.test(u.department||'')?(' · Shift '+esc(u.shift)):'')+' · '+esc(u.role||'')+'</span></div>'
+      +'<button type="button" class="btn primary" onclick="approve('+i+')">Approve</button></div>';
+  }).join('');
+}
+function approve(i){
+  const u=_pending[i]; if(!u||!_mgr) return;
+  callApi('approveUser',[u.name,_mgr.name,_mgr.pin]).then(function(){
+    toast('Approved '+u.name);
+    return callApi('getUsers',[]).then(function(us){ USERS=us||[]; populateUserDropdowns(); });
+  }).then(function(){ loadPending(); }).catch(function(e){ authMsg('mgrMsg', (e&&e.message)||'Approve failed'); });
+}
+function initAuth(){
+  populateUserDropdowns();
+  // Never auto-resume: the user must sign in every time the app is opened.
+  try{ localStorage.removeItem('cscUser'); }catch(e){}
+  showScreen('login');
+}
+
+Promise.all([callApi('getLookups',[]), callApi('getBuildings',[]), callApi('getUsers',[])]).then(function(r){
+  BUILDINGS = r[1]||[];
+  USERS = r[2]||[];
+  initBuildingSelect();     // populate the (hidden) building dropdown from the Buildings tab
+  onData(r[0]);
+  loadLogs();               // counts master log -> counted per-building baseline (From tiles)
+  loadMoves();              // movement ledger -> stacked on the baseline for live on-hand
+  initAuth();               // name dropdowns + resume session or show the sign-in screen
+}).catch(onDataFail);
 
 /* ---- toast ---- */
 let toastT;
@@ -561,8 +2291,41 @@ function toast(msg,type){
   clearTimeout(toastT); toastT=setTimeout(()=>t.className='',1800);
 }
 
+/* Keep taps in the GAPS between keys from blurring the field (which hides the pad) or scrolling.
+   The buttons preventDefault themselves; the pad background did not, so a near-miss tap landed on
+   the container, blurred the input, and closed the keyboard. Swallow those stray taps here. */
+['cardKeypad','textKeypad'].forEach(function(id){
+  var pad=document.getElementById(id);
+  if(pad){ pad.addEventListener('pointerdown', function(ev){
+    if(ev.target.closest('button')) return;   // real key press — let its own handler run
+    ev.preventDefault();                        // gap/edge tap — don't move focus or scroll
+  }, {passive:false}); }
+});
+
+/* Rotating the phone can leave the docked keypad mis-sized (stuck tall). When orientation/size
+   changes while a pad is open, rebuild its layout for the new width and re-seat the active field. */
+(function(){
+  var reflowTO=null;
+  function reflowPad(){
+    var tk=$('textKeypad'), kp=$('cardKeypad');
+    var tkOpen=tk&&tk.classList.contains('show'), kpOpen=kp&&kp.classList.contains('show');
+    if(!tkOpen && !kpOpen) return;
+    var g=$('tkGrid'); if(g){ g.dataset.built=''; if(tkOpen) tkBuild(); }   // re-lay-out for new width
+    var id = tkOpen ? activeTextField : activeNumField;
+    var el = id && $(id);
+    if(el){ setTimeout(function(){ scrollFieldUp(el, id==='f_loc'?'.total-strip':null); }, 80); }
+  }
+  function schedule(){ clearTimeout(reflowTO); reflowTO=setTimeout(reflowPad, 250); }
+  window.addEventListener('orientationchange', schedule);
+  window.addEventListener('resize', schedule);
+})();
+
 /* show the build/version tag */
 $('buildTag').textContent = APP_VERSION;
+
+/* ---- resume the saved session on open (the app itself opens after sign-in) ---- */
+restoreSession(loadSession());
+initBuildingSelect();
 </script>
 </body>
 </html>

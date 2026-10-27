@@ -1,48 +1,41 @@
 /**
- * CSC Live Inventory — Cloudflare Worker (BACKEND)
+ * Inventory Count — Cloudflare Worker (BACKEND)
  * ------------------------------------------------------------------------------------------
- * Perpetual-inventory movement logger for the shipping / warehouse floor.
+ * Front end is on GitHub Pages; this Worker is the backend. The browser POSTs {fn, args} here
+ * and this reads/writes the Google Sheet directly using a service account (no Apps Script).
  *
- * The browser (GitHub Pages) POSTs {fn, args} here. This Worker:
- *   • READS the product master (three lookup tabs) — read-only, never written.
- *   • READS the Buildings map from the Movements workbook.
- *   • WRITES one row per stock movement to the Movements workbook.
- *
- * Deploy: paste this whole file into a dashboard Worker (Create Worker > Edit code > Deploy),
- * or `wrangler deploy`. Set these in Settings > Variables and Secrets:
- *   GCP_SA_EMAIL        (secret)  service account email (client_email in the key JSON)
+ * Self-contained: paste this whole file into a dashboard Worker (Create Worker > Edit code),
+ * or deploy with wrangler. Set these variables (Settings > Variables and Secrets):
+ *   GCP_SA_EMAIL        (secret)  service account email  (client_email in the key JSON)
  *   GCP_SA_PRIVATE_KEY  (secret)  the private_key from the key JSON (PEM; literal \n is fine)
- *   ALLOWED_ORIGIN      (var)     e.g. https://jmarrujo-jpg.github.io  (locks CORS; default *)
+ *   SHEET_ID            (var)     spreadsheet id (optional; defaults to the Inventory workbook)
+ *   ALLOWED_ORIGIN      (var)     e.g. https://jmarrujo-jpg.github.io  (optional; default *)
  *   API_TOKEN           (secret)  optional shared token; if set, the client must send it
- *   MOVEMENTS_TAB       (var)     optional; which tab to append movements to.
- *                                 Defaults to 'Movements'. Set to e.g. 'Movements_Sandbox'
- *                                 while testing — the Worker auto-creates the tab + header.
  *
- * The service account must have EDITOR on the Movements workbook and VIEWER on the lookup
- * workbook. Both sheet IDs are baked in below (override the Movements one with SHEET_ID).
+ * Reads AND writes are live: getLookups() serves the three lookup tabs, appendEntry() writes a
+ * counted row to the Metals / Plastics tabs — the same contract the Apps Script backend used.
  */
 
-// ---- Spreadsheet IDs ----
-// Movements workbook (read Buildings + write Movements). Override with a SHEET_ID variable.
-const DEFAULT_MOVEMENTS_SHEET_ID = '1xaXUqrRbr3C6yM10Tw9a0ctL2zjbrrNAFzn3ZPNr704';
-// Product master / lookups (READ ONLY — never write here).
-const LOOKUP_SHEET_ID = '1GNw1gAnB1jI9L6PdUoUeQAlOKCHlPJ1f0-kxcQroI9U';
+// Inventory workbook id — used when the SHEET_ID variable isn't set. Override it by setting a
+// SHEET_ID variable on the Worker if the workbook ever changes.
+const DEFAULT_SHEET_ID = '1GNw1gAnB1jI9L6PdUoUeQAlOKCHlPJ1f0-kxcQroI9U';
 
-// ---- Tab names ----
-const LOOKUP_TAB = { ends: 'Ends_Lookup', cans: 'Cans_Lookup', plastics: 'Plastics_Lookup' };
-const BUILDINGS_TAB = 'Buildings';
-const DEFAULT_MOVEMENTS_TAB = 'Movements';
-
-// Movements tab layout — 21 columns, A:U, written BY POSITION (order is the contract).
-export const MOVEMENTS_HEADER = [
-  'Movement ID', 'Logged At', 'Event Date', 'User', 'Barcode', 'Product', 'Description',
-  'Kind', 'Entry Method', 'Qty Entered', 'UOM', 'Units Per Pallet', 'Qty Each',
-  'From Building', 'From Location', 'To Building', 'To Location', 'Reference', 'Note',
-  'Flags', 'Voids',
-];
+// ---- Tab names (change here if you rename tabs) ----
+// Output tabs are split: Cans and Ends each get their own tab (auto-created if missing).
+const TAB = {
+  ends: 'Ends_Lookup',
+  cans: 'Cans_Lookup',
+  plastics: 'Plastics_Lookup',
+  cansOut: 'Cans',
+  endsOut: 'Ends',
+  plasticsOut: 'Plastics',
+};
 
 export default {
   async fetch(request, env) {
+    // Echo the caller's Origin so the CORS header always matches (avoids a misconfigured
+    // ALLOWED_ORIGIN silently blocking the app). If ALLOWED_ORIGIN is set to a specific origin,
+    // only that origin is allowed; otherwise any origin is echoed back.
     const reqOrigin = request.headers.get('Origin') || '*';
     const allowOrigin = (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN !== '*')
       ? (env.ALLOWED_ORIGIN === reqOrigin ? reqOrigin : env.ALLOWED_ORIGIN)
@@ -57,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v1' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v15-users' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -78,166 +71,396 @@ export default {
 
 // ---------------- dispatcher ----------------
 async function handle(fn, args, env) {
-  const api = await makeApi(env);
-  const movementsId = env.SHEET_ID || DEFAULT_MOVEMENTS_SHEET_ID;
-  const movementsTab = env.MOVEMENTS_TAB || DEFAULT_MOVEMENTS_TAB;
   args = args || [];
+  if (fn === 'getLogs') return getLogs(env);          // reads a SEPARATE, read-only workbook
+  if (fn === 'getBuildings') return getBuildings(env); // reads the Movements workbook's Buildings tab
+  if (fn === 'getMovements') return getMovements(env); // reads back the Movements log (per-building deltas)
+  if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
+  if (fn === 'getUsers') return getUsers(env);                // approved users for the sign-in dropdown (no PINs)
+  if (fn === 'signupUser') return signupUser(env, args[0]);   // create a pending account
+  if (fn === 'authUser') return authUser(env, args[0], args[1]); // verify name + PIN
+  if (fn === 'listPending') return listPending(env, args[0], args[1]); // manager: pending accounts
+  if (fn === 'approveUser') return approveUser(env, args[0], args[1], args[2]); // manager: approve one
+  const sheets = await makeSheets(env);
   switch (fn) {
-    case 'bootstrap': return bootstrap(api, movementsId);
-    case 'logMovement': return logMovement(api, movementsId, movementsTab, args[0]);
-    case 'recentMovements': return recentMovements(api, movementsId, movementsTab, args[0]);
-    // Back-compat: the old scanner page still calls getLookups().
-    case 'getLookups': return (await bootstrap(api, movementsId)).lookups;
+    case 'getLookups': return getLookups(sheets);   // READ ONLY — the lookup workbook is never written
     default:
       throw new Error('Unknown function: ' + fn);
   }
 }
 
-// ---------------- value helpers ----------------
-export function str_(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
-export function num_(v) {
-  if (v === '' || v === null || v === undefined) return '';
-  const n = Number(v);
-  return isNaN(n) ? str_(v) : n;
-}
-function asNum(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
-function asBool(v) { return v === true || String(v).trim().toUpperCase() === 'TRUE'; }
-
-// A production environment is a creation/transformation point (Metals Production, Plastics
-// Production). Moving stock INTO one is flagged "In Production".
-export function isProductionBuilding(name) { return /production/i.test(String(name || '')); }
-
-// Total units for a movement. Entering by pallet multiplies by units-per-pallet; by each is 1:1.
-export function computeQtyEach(entryMethod, qtyEntered, unitsPerPallet) {
-  const q = asNum(qtyEntered);
-  if (String(entryMethod).toLowerCase() === 'pallets') return Math.round(q * asNum(unitsPerPallet));
-  return Math.round(q);
-}
-
-// Build the 21-column movement row (by position). Server stamps ID + Logged At.
-export function buildMovementRow(m, now) {
-  m = m || {};
-  const when = now || new Date();
-  const loggedAt = when.toISOString();
-  const eventDate = str_(m.eventDate) || loggedAt.slice(0, 10);
-  const entryMethod = String(m.entryMethod).toLowerCase() === 'pallets' ? 'Pallets' : 'Each';
-  const qtyEntered = asNum(m.qtyEntered);
-  const unitsPerPallet = m.unitsPerPallet === '' || m.unitsPerPallet == null ? '' : asNum(m.unitsPerPallet);
-  // Honor an explicit client total (pallets x per + loose extras); otherwise compute it.
-  const qtyEach = (m.qtyEach !== '' && m.qtyEach != null && !isNaN(Number(m.qtyEach)))
-    ? Math.round(Number(m.qtyEach))
-    : computeQtyEach(entryMethod, qtyEntered, unitsPerPallet);
-  const flags = isProductionBuilding(m.toBuilding) ? 'In Production' : str_(m.flags);
-  const movementId = str_(m.movementId) || genMovementId(when);
-  return [
-    movementId,                 // 1  Movement ID
-    loggedAt,                   // 2  Logged At (server, ISO)
-    eventDate,                  // 3  Event Date
-    str_(m.user),               // 4  User
-    str_(m.barcode),            // 5  Barcode (scanned)
-    str_(m.product),            // 6  Product (canonical SKU/code)
-    str_(m.desc),               // 7  Description
-    str_(m.kind),               // 8  Kind (coarse: Metals / Plastics)
-    entryMethod,                // 9  Entry Method
-    qtyEntered,                 // 10 Qty Entered
-    entryMethod,                // 11 UOM
-    unitsPerPallet,             // 12 Units Per Pallet
-    qtyEach,                    // 13 Qty Each (total units)
-    str_(m.fromBuilding),       // 14 From Building
-    str_(m.fromLocation),       // 15 From Location
-    str_(m.toBuilding),         // 16 To Building
-    str_(m.toLocation),         // 17 To Location
-    str_(m.reference),          // 18 Reference
-    str_(m.note),               // 19 Note
-    flags,                      // 20 Flags
-    '',                         // 21 Voids
-  ];
-}
-
-function genMovementId(when) {
-  const t = (when || new Date()).getTime().toString(36).toUpperCase();
-  const r = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return 'MV-' + t + '-' + r;
-}
-
-// ---------------- backend functions ----------------
-// Load everything the movement flow needs in one round trip: product master + buildings.
-async function bootstrap(api, movementsId) {
-  const [ends, cans, plastics, buildings] = await Promise.all([
-    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.ends),
-    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.cans),
-    api.values(LOOKUP_SHEET_ID, LOOKUP_TAB.plastics),
-    api.values(movementsId, BUILDINGS_TAB),
-  ]);
-  return {
-    lookups: {
-      // Ends_Lookup: Label Code | Description | Per Pallet | Weight | Type
-      ends: rowsToItems(ends, (r) => ({
-        code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]), weight: str_(r[3]), type: str_(r[4]),
-        kind: 'Ends', cat: 'Metals',
-      })),
-      // Cans_Lookup: Label Number | Description | Per Pallet
-      cans: rowsToItems(cans, (r) => ({
-        code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]),
-        kind: 'Cans', cat: 'Metals',
-      })),
-      // Plastics_Lookup: Item # | Description | Type | Per Pallet/Box
-      plastics: rowsToItems(plastics, (r) => ({
-        code: str_(r[0]), desc: str_(r[1]), type: str_(r[2]), perUnit: num_(r[3]),
-        kind: 'Plastics', cat: 'Plastics',
-      })),
-    },
-    buildings: buildingsFromRows(buildings),
+// ---------------- read-only history logs ----------------
+// A SEPARATE workbook holds "Metals Log" / "Plastics Log" — where each product was last counted and
+// how many. The app reads these to show "last counted here" info; it NEVER writes to this workbook.
+// The service account (GCP_SA_EMAIL) must be given Viewer access to this workbook for reads to work.
+const LOG_SHEET_ID = '1NVCx-n9_Zha9u1HPyi3hGLBQ4EyWHx7AbA4zs36hbYc';
+// Columns: Count Date | Logged At | Kind | Location | Product | Description | Quantity
+async function getLogs(env) {
+  const sheets = await makeSheets(env, LOG_SHEET_ID);
+  const titles = await sheets.titles();
+  const findTab = (kw) => titles.find((t) => String(t).toLowerCase().replace(/[_\s]+/g, ' ').indexOf(kw) !== -1);
+  const parseLog = async (tab) => {
+    if (!tab) return [];
+    let values;
+    try { values = await sheets.readAll(tab); }
+    catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
+    if (!values.length) return [];
+    const H = values[0].map((h) => String(h).trim().toLowerCase());
+    const at = (n) => H.indexOf(n);
+    const iDate = at('count date'), iKind = at('kind'), iLoc = at('location'),
+          iProd = at('product'), iDesc = at('description'), iQty = at('quantity');
+    const g = (r, i) => str_(i === -1 ? '' : r[i]);
+    const out = [];
+    for (let n = 1; n < values.length; n++) {
+      const r = values[n] || [];
+      if (str_(r[0]).indexOf('__META__') !== -1) continue;   // skip the meta marker row
+      const loc = g(r, iLoc), prod = g(r, iProd);
+      if (!loc && !prod) continue;
+      out.push({
+        countDate: g(r, iDate), kind: g(r, iKind), loc: loc, product: prod,
+        desc: g(r, iDesc), qty: num_(iQty === -1 ? '' : r[iQty]),
+      });
+    }
+    return out;
   };
+  const [metals, plastics] = await Promise.all([
+    parseLog(findTab('metals log')),
+    parseLog(findTab('plastics log')),
+  ]);
+  return { metals: metals, plastics: plastics };
 }
 
-function rowsToItems(values, mapFn) {
-  return (values || []).slice(1).filter((r) => str_(r[1])).map(mapFn);
-}
+// ---------------- Live Inventory: movements (read + write) ----------------
+// A SEPARATE workbook is the movement log. We READ its Buildings map and APPEND movement rows.
+// The service account needs EDITOR here. The lookup workbook (DEFAULT_SHEET_ID) stays read-only.
+const MOVEMENTS_SHEET_ID = '1xaXUqrRbr3C6yM10Tw9a0ctL2zjbrrNAFzn3ZPNr704';
+const MOVEMENTS_TAB = 'Movements';
+const BUILDINGS_TAB = 'Buildings';
+// Movements tab — 21 columns, A:U, written BY POSITION (this order is the contract).
+const MOVEMENTS_HEADER = [
+  'Movement ID', 'Logged At', 'Event Date', 'User', 'Barcode', 'Product', 'Description',
+  'Kind', 'Entry Method', 'Qty Entered', 'UOM', 'Units Per Pallet', 'Qty Each',
+  'From Building', 'From Location', 'To Building', 'To Location', 'Reference', 'Note', 'Flags', 'Voids',
+];
 
-// Buildings: Building | Staging Location | Location Prefix | Counts As Inventory | Sort Order
-function buildingsFromRows(values) {
+// A production environment (Metals/Plastics Production) is a creation + transformation point;
+// moving stock INTO one is flagged "In Production".
+function isProductionBuilding(name) { return /production/i.test(String(name || '')); }
+
+// Buildings tab: Building | Staging Location | Location Prefix | Counts As Inventory | Sort Order
+async function getBuildings(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  let values;
+  try { values = await sheets.readAll(BUILDINGS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
   return (values || []).slice(1)
     .filter((r) => str_(r[0]))
     .map((r) => ({
-      name: str_(r[0]),
-      staging: str_(r[1]),
-      prefix: str_(r[2]),
-      countsAsInventory: asBool(r[3]),
-      sort: asNum(r[4]),
-      production: isProductionBuilding(r[0]),
+      name: str_(r[0]), staging: str_(r[1]), prefix: str_(r[2]),
+      countsAsInventory: (r[3] === true || String(r[3]).trim().toUpperCase() === 'TRUE'),
+      sort: (Number(r[4]) || 0), production: isProductionBuilding(r[0]),
     }))
     .sort((a, b) => a.sort - b.sort);
 }
 
-async function logMovement(api, movementsId, movementsTab, m) {
+// Append one movement row to the Movements sheet. Server stamps the ID + Logged At and flags
+// "In Production" when the destination is a production environment.
+async function logMovement(env, m) {
   m = m || {};
   if (!str_(m.product)) throw new Error('Missing product');
   if (!str_(m.fromBuilding)) throw new Error('Missing From building');
   if (!str_(m.toBuilding)) throw new Error('Missing To building');
-  const row = buildMovementRow(m, new Date());
-  await api.ensureTab(movementsId, movementsTab, MOVEMENTS_HEADER);
-  await api.appendRow(movementsId, movementsTab, row);
-  return { movementId: row[0], loggedAt: row[1], qtyEach: row[12], flags: row[19] };
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const when = new Date();
+  const loggedAt = when.toISOString();
+  const entryMethod = String(m.entryMethod).toLowerCase() === 'each' ? 'Each' : 'Pallets';
+  const qEntered = (m.qtyEntered === '' || m.qtyEntered == null) ? '' : Number(m.qtyEntered);
+  const perPallet = (m.unitsPerPallet === '' || m.unitsPerPallet == null) ? '' : Number(m.unitsPerPallet);
+  const qtyEach = (m.qtyEach !== '' && m.qtyEach != null && !isNaN(Number(m.qtyEach)))
+    ? Math.round(Number(m.qtyEach))
+    : (entryMethod === 'Pallets' ? Math.round((Number(qEntered) || 0) * (Number(perPallet) || 0)) : Math.round(Number(qEntered) || 0));
+  const staged = (m.staged === true || String(m.staged).trim().toUpperCase() === 'TRUE');
+  const flagList = [];
+  if (isProductionBuilding(m.toBuilding)) flagList.push('In Production');
+  if (staged) flagList.push('Staged for Shipment');
+  if (str_(m.flags)) flagList.push(str_(m.flags));
+  const flags = flagList.join(' | ');
+  const id = str_(m.movementId) || ('MV-' + when.getTime().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase());
+  const row = [
+    id, loggedAt, str_(m.eventDate) || loggedAt.slice(0, 10), str_(m.user), str_(m.barcode),
+    str_(m.product), str_(m.desc), str_(m.kind), entryMethod, qEntered, entryMethod, perPallet, qtyEach,
+    str_(m.fromBuilding), str_(m.fromLocation), str_(m.toBuilding), str_(m.toLocation),
+    str_(m.reference), str_(m.note), flags, '',
+  ];
+  await sheets.appendEnsuring(MOVEMENTS_TAB, row, MOVEMENTS_HEADER);
+  return { movementId: id, loggedAt: loggedAt, qtyEach: qtyEach, flags: flags };
 }
 
-async function recentMovements(api, movementsId, movementsTab, limit) {
-  const n = Math.max(1, Math.min(200, asNum(limit) || 25));
+// Read the Movements log back so the app can stack movements onto the counted baseline and show a
+// live per-building on-hand. Read-only; matched to columns by header name (robust to reordering).
+// A non-empty "Voids" cell marks a movement that should be ignored.
+async function getMovements(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
   let values;
-  try { values = await api.values(movementsId, movementsTab); }
-  catch (e) { return []; } // tab may not exist yet
-  const rows = (values || []).slice(1); // drop header
-  return rows.slice(-n).reverse().map((r) => ({
-    movementId: str_(r[0]), loggedAt: str_(r[1]), user: str_(r[3]),
-    product: str_(r[5]), desc: str_(r[6]), kind: str_(r[7]),
-    qtyEach: num_(r[12]), fromBuilding: str_(r[13]), toBuilding: str_(r[15]),
-    flags: str_(r[19]),
-  }));
+  try { values = await sheets.readAll(MOVEMENTS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
+  if (!values.length) return [];
+  const H = values[0].map((h) => String(h).trim().toLowerCase());
+  const at = (n) => H.indexOf(n);
+  const iBarcode = at('barcode'), iProduct = at('product'), iDesc = at('description'), iKind = at('kind'),
+        iQtyEach = at('qty each'), iFrom = at('from building'), iTo = at('to building'),
+        iFlags = at('flags'), iVoids = at('voids');
+  const g = (r, i) => (i === -1 ? '' : str_(r[i]));
+  const out = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    const prod = g(r, iProduct), bc = g(r, iBarcode);
+    if (!prod && !bc) continue;                      // skip blank rows
+    const flags = g(r, iFlags);
+    out.push({
+      product: prod, barcode: bc, desc: g(r, iDesc), kind: g(r, iKind),
+      qtyEach: num_(iQtyEach === -1 ? '' : r[iQtyEach]),
+      fromBuilding: g(r, iFrom), toBuilding: g(r, iTo),
+      flags: flags, staged: /staged for shipment/i.test(flags),
+      voided: !!g(r, iVoids),
+    });
+  }
+  return out;
+}
+
+// ---------------- users / sign-in / approvals ----------------
+// A "Users" tab in the Movements workbook holds accounts. Columns (by position):
+//   Name | Department | Shift # | Password (4-digit PIN) | Role | Approval
+// Approval must read "YES" for the account to sign in and to appear in the app's name dropdown.
+// PINs are verified server-side and are NEVER returned to the browser.
+const USERS_TAB = 'Users';
+const USERS_HEADER = ['Name', 'Department', 'Shift #', 'Password', 'Role', 'Approval'];
+function isApprovedVal(v) { return String(v || '').trim().toUpperCase() === 'YES'; }
+function normName(s) { return String(s || '').trim().toLowerCase(); }
+
+// Read the Users tab into structured rows (includes PINs + sheet row numbers — server-side only).
+async function readUsers(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  let values;
+  try { values = await sheets.readAll(USERS_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return { sheets, rows: [] }; throw e; }
+  const rows = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    const name = str_(r[0]);
+    if (!name) continue;
+    rows.push({ row: n + 1, name, department: str_(r[1]), shift: str_(r[2]), password: str_(r[3]), role: str_(r[4]), approval: str_(r[5]) });
+  }
+  return { sheets, rows };
+}
+
+// Public: approved users only, WITHOUT PINs — feeds the sign-in dropdown.
+async function getUsers(env) {
+  const { rows } = await readUsers(env);
+  return rows.filter((u) => isApprovedVal(u.approval))
+    .map((u) => ({ name: u.name, department: u.department, shift: u.shift, role: u.role }));
+}
+
+// Create a pending account (Approval left blank until a manager approves).
+async function signupUser(env, u) {
+  u = u || {};
+  const name = str_(u.name);
+  if (!name) throw new Error('Full name is required');
+  const pin = str_(u.pin);
+  if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly 4 digits');
+  const dept = str_(u.department);
+  const role = str_(u.role);
+  if (!dept) throw new Error('Department is required');
+  if (!role) throw new Error('Role is required');
+  const { sheets, rows } = await readUsers(env);
+  if (rows.some((x) => normName(x.name) === normName(name))) throw new Error('That name already exists — pick another or ask a manager.');
+  // Shift # only applies to Plastics; everyone else is shift 1.
+  const shift = /plastic/i.test(dept) ? (str_(u.shift) || '1') : '1';
+  await sheets.appendEnsuring(USERS_TAB, [name, dept, shift, pin, role, ''], USERS_HEADER);
+  return { ok: true, pending: true };
+}
+
+// Verify name + PIN. Must be approved to sign in. Returns the user (no PIN).
+async function authUser(env, name, pin) {
+  const { rows } = await readUsers(env);
+  const u = rows.find((x) => normName(x.name) === normName(str_(name)));
+  if (!u) throw new Error('Name not found');
+  if (str_(u.password) !== str_(pin)) throw new Error('Wrong PIN');
+  if (!isApprovedVal(u.approval)) throw new Error('Account is awaiting manager approval');
+  return { name: u.name, department: u.department, shift: u.shift, role: u.role };
+}
+
+// Confirm the caller is an approved Manager, returning all rows for further action.
+async function verifyManager(env, name, pin) {
+  const { rows } = await readUsers(env);
+  const u = rows.find((x) => normName(x.name) === normName(str_(name)));
+  if (!u || str_(u.password) !== str_(pin)) throw new Error('Manager sign-in failed');
+  if (!/manager/i.test(u.role) || !isApprovedVal(u.approval)) throw new Error('Not an approved manager');
+  return rows;
+}
+
+// Manager: list accounts still awaiting approval (no PINs).
+async function listPending(env, managerName, managerPin) {
+  const rows = await verifyManager(env, managerName, managerPin);
+  return rows.filter((u) => !isApprovedVal(u.approval))
+    .map((u) => ({ name: u.name, department: u.department, shift: u.shift, role: u.role }));
+}
+
+// Manager: approve one account (sets Approval = YES).
+async function approveUser(env, targetName, managerName, managerPin) {
+  const rows = await verifyManager(env, managerName, managerPin);
+  const t = rows.find((x) => normName(x.name) === normName(str_(targetName)));
+  if (!t) throw new Error('User not found');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  await sheets.update(USERS_TAB + '!F' + t.row, [['YES']]);   // column F = Approval
+  return { ok: true };
+}
+
+// ---------------- value helpers (match the old Apps Script) ----------------
+function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+function str_(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
+function num_(v) {
+  if (v === '' || v === null || v === undefined) return '';
+  const n = Number(v);
+  return isNaN(n) ? str_(v) : n;
+}
+
+// ---------------- backend functions ----------------
+// Ends_Lookup:     Label Code  | Description | Per Pallet     | Weight | Type
+// Cans_Lookup:     Label Number | Description | Per Pallet
+// Plastics_Lookup: Item #       | Description | Type           | Per Pallet/Box
+async function getLookups(sheets) {
+  const [ends, cans, plastics] = await Promise.all([
+    sheets.rows(TAB.ends),
+    sheets.rows(TAB.cans),
+    sheets.rows(TAB.plastics),
+  ]);
+  return {
+    ends: ends.filter((r) => str_(r[1])).map((r) => ({
+      code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]), weight: str_(r[3]), type: str_(r[4]),
+    })),
+    cans: cans.filter((r) => str_(r[1])).map((r) => ({
+      code: str_(r[0]), desc: str_(r[1]), perUnit: num_(r[2]),
+    })),
+    plastics: plastics.filter((r) => str_(r[1])).map((r) => ({
+      code: str_(r[0]), desc: str_(r[1]), type: str_(r[2]), perUnit: num_(r[3]),
+    })),
+  };
+}
+
+/**
+ * Append one counted entry. dept = 'metals' or 'plastics'; for metals, e.category is
+ * 'Cans' or 'Ends' and picks the tab. Cans and Ends write to their own tabs, which are
+ * created (with a header row) on first use if they don't exist yet.
+ * The Sheets values:append (INSERT_ROWS) is atomic server-side, so concurrent counters
+ * appending at once each get their own new row — no LockService needed.
+ */
+async function appendEntry(sheets, e, dept) {
+  e = e || {};
+  let tab, row, header;
+  // NOTE: Location comes before Total (Total is the last column) to match the sheet layout.
+  if (dept === 'plastics') {
+    tab = TAB.plasticsOut;
+    header = ['Timestamp', 'Counter', 'Item #', 'Description', 'Type', 'Per Unit', 'Full', 'Extra', 'Location', 'Total'];
+    row = [e.ts, e.counter, e.code, e.desc, e.type, e.per, e.full, e.extra, e.loc, e.total];
+  } else if (e.category === 'Cans') {
+    tab = TAB.cansOut;
+    header = ['Timestamp', 'Counter', 'Code', 'Description', 'Per Unit', 'Full', 'Extra', 'Location', 'Total'];
+    row = [e.ts, e.counter, e.code, e.desc, e.per, e.full, e.extra, e.loc, e.total];
+  } else {
+    tab = TAB.endsOut;
+    header = ['Timestamp', 'Counter', 'Label Code', 'Description', 'Weight', 'Type', 'Per Unit', 'Full', 'Extra', 'Location', 'Total'];
+    row = [e.ts, e.counter, e.code, e.desc, e.weight, e.type, e.per, e.full, e.extra, e.loc, e.total];
+  }
+  await sheets.appendEnsuring(tab, row, header);
+  return true;
+}
+
+// Read back everything currently in the output tabs so the app can show the full count list
+// (the Sheet is the source of truth — survives phone crashes / different devices).
+async function getEntries(sheets) {
+  const [cans, ends, plastics] = await Promise.all([
+    readTabEntries(sheets, TAB.cansOut, 'Cans'),
+    readTabEntries(sheets, TAB.endsOut, 'Ends'),
+    readTabEntries(sheets, TAB.plasticsOut, 'Plastics'),
+  ]);
+  return { cans, ends, plastics };
+}
+function numOr0(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
+async function readTabEntries(sheets, tab, category) {
+  let values;
+  try {
+    values = await sheets.readAll(tab);
+  } catch (e) {
+    if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; // tab not created yet
+    throw e;
+  }
+  if (!values.length) return [];
+  const headers = values[0].map((h) => String(h).trim());
+  const at = (name) => headers.indexOf(name);
+  // code column has a different header per tab
+  const iCode = [ 'Code', 'Label Code', 'Label Number', 'Item #' ].map(at).find((i) => i !== -1);
+  const cell = (r, name) => { const i = at(name); return (i === -1 || r[i] === undefined || r[i] === null) ? '' : r[i]; };
+  const out = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    if (!r.some((c) => c !== '' && c !== null && c !== undefined)) continue; // skip blank rows
+    out.push({
+      __tab: tab,
+      __row: n + 1, // 1-based sheet row (row 1 is the header)
+      ts: String(cell(r, 'Timestamp') || ''),
+      counter: String(cell(r, 'Counter') || ''),
+      category,
+      code: String((iCode !== undefined && r[iCode] != null) ? r[iCode] : ''),
+      desc: String(cell(r, 'Description') || ''),
+      weight: String(cell(r, 'Weight') || ''),
+      type: String(cell(r, 'Type') || ''),
+      per: numOr0(cell(r, 'Per Unit')),
+      full: numOr0(cell(r, 'Full')),
+      extra: numOr0(cell(r, 'Extra')),
+      total: numOr0(cell(r, 'Total')),
+      loc: String(cell(r, 'Location') || ''),
+    });
+  }
+  return out;
+}
+
+// Build the row array for a tab (same column order as append).
+function rowForTab(tab, e) {
+  if (tab === TAB.plasticsOut) return [e.ts, e.counter, e.code, e.desc, e.type, e.per, e.full, e.extra, e.loc, e.total];
+  if (tab === TAB.cansOut) return [e.ts, e.counter, e.code, e.desc, e.per, e.full, e.extra, e.loc, e.total];
+  return [e.ts, e.counter, e.code, e.desc, e.weight, e.type, e.per, e.full, e.extra, e.loc, e.total]; // Ends
+}
+// Overwrite an existing row in place (identified by __tab + __row).
+async function updateEntry(sheets, e) {
+  e = e || {};
+  if (!e.__tab || !e.__row) throw new Error('Missing row reference for update');
+  await sheets.update(e.__tab + '!A' + e.__row, [rowForTab(e.__tab, e)]);
+  return true;
+}
+// Delete a row entirely (identified by __tab + __row).
+async function deleteEntry(sheets, ref) {
+  ref = ref || {};
+  if (!ref.__tab || !ref.__row) throw new Error('Missing row reference for delete');
+  const sheetId = await sheets.sheetId(ref.__tab);
+  if (sheetId == null) throw new Error('Tab not found: ' + ref.__tab);
+  await sheets.deleteRow(sheetId, ref.__row);
+  return true;
+}
+
+// Clear every counted row for ONE department, leaving the header intact. Metals clears both the
+// Cans and Ends tabs; Plastics clears only the Plastics tab — so deleting one never touches the
+// other. Tabs that don't exist yet are skipped.
+async function clearDept(sheets, dept) {
+  const tabs = (dept === 'plastics') ? [TAB.plasticsOut] : [TAB.cansOut, TAB.endsOut];
+  for (let i = 0; i < tabs.length; i++) {
+    await sheets.clearRows(tabs[i]);
+  }
+  return true;
 }
 
 // ---------------- Google auth + Sheets ----------------
 let cachedToken = null;
-const ensuredTabs = new Set();
 
 function b64urlBytes(bytes) {
   let s = '';
@@ -277,47 +500,120 @@ async function getToken(env) {
   cachedToken = await mintToken(env);
   return cachedToken.token;
 }
-async function makeApi(env) {
+async function makeSheets(env, overrideId) {
   const token = await getToken(env);
+  const id = overrideId || env.SHEET_ID || DEFAULT_SHEET_ID;
+  const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
   const auth = { Authorization: 'Bearer ' + token };
-  const base = (id) => 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
   async function call(url, opts) {
-    const r = await fetch(url, opts);
-    const t = await r.text();
-    let j; try { j = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Sheets API non-JSON: ' + t.slice(0, 200)); }
-    if (!r.ok) throw new Error('Sheets API ' + r.status + ': ' + (j.error && j.error.message ? j.error.message : t.slice(0, 200)));
-    return j;
+    opts = opts || {};
+    const method = (opts.method || 'GET').toUpperCase();
+    // Only reads (GET) are auto-retried — retrying a write could duplicate a row that actually
+    // committed before its response failed. Google's 429 (rate limit) and 5xx (e.g. the 503
+    // "service is currently unavailable") are transient, so a read backs off and tries again.
+    const maxAttempts = method === 'GET' ? 4 : 1;
+    let lastErr;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let r, t;
+      try {
+        r = await fetch(url, opts);
+        t = await r.text();
+      } catch (e) {
+        lastErr = e;
+        if (attempt < maxAttempts) { await sleep(300 * attempt); continue; }
+        throw new Error('Sheets API request failed: ' + (e && e.message ? e.message : String(e)));
+      }
+      let j; try { j = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Sheets API non-JSON: ' + t.slice(0, 200)); }
+      if (!r.ok) {
+        if (method === 'GET' && (r.status === 429 || r.status >= 500) && attempt < maxAttempts) {
+          await sleep(300 * attempt); continue;
+        }
+        throw new Error('Sheets API ' + r.status + ': ' + (j.error && j.error.message ? j.error.message : t.slice(0, 200)));
+      }
+      return j;
+    }
+    throw lastErr || new Error('Sheets API failed');
   }
   return {
-    // Read all rows of a tab as raw values (header included).
-    async values(sheetId, tab) {
-      const j = await call(base(sheetId) + '/values/' + encodeURIComponent(tab)
+    id,
+    // Read every data row (row 2 onward) of a tab as raw values.
+    async rows(tab) {
+      const j = await call(base + '/values/' + encodeURIComponent(tab)
         + '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER', { headers: auth });
-      return j.values || [];
+      const values = j.values || [];
+      return values.slice(1); // drop the header row
     },
-    // Append a row at the table origin (A1) so a stray cell can't offset the write.
-    async appendRow(sheetId, tab, row) {
-      return call(base(sheetId) + '/values/' + encodeURIComponent(tab + '!A1')
-        + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+    async append(tab, row) {
+      // Anchor the append at A1 so Sheets treats the header row (A1) as the table and always
+      // writes the new row in column A. Without the "!A1" anchor it auto-detects a table from the
+      // whole sheet and can latch onto a stray block off to the right (e.g. starting at column I).
+      return call(base + '/values/' + encodeURIComponent(tab + '!A1') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
         { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [row] }) });
     },
-    // Create the tab + header row if it doesn't exist yet (cached per isolate).
-    async ensureTab(sheetId, tab, header) {
-      const key = sheetId + '::' + tab;
-      if (ensuredTabs.has(key)) return;
-      const meta = await call(base(sheetId) + '?fields=sheets.properties.title', { headers: auth });
-      const titles = (meta.sheets || []).map((s) => s.properties.title);
-      if (!titles.includes(tab)) {
-        await call(base(sheetId) + ':batchUpdate', {
-          method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tab } } }] }),
-        });
-        await call(base(sheetId) + '/values/' + encodeURIComponent(tab + '!A1') + '?valueInputOption=RAW', {
-          method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values: [header] }),
-        });
+    // Overwrite values starting at a range (e.g. "Cans!A5").
+    async update(rangeA1, values) {
+      return call(base + '/values/' + encodeURIComponent(rangeA1) + '?valueInputOption=RAW',
+        { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values }) });
+    },
+    // List every tab title in the workbook (used to locate the log tabs by name).
+    async titles() {
+      const meta = await call(base + '?fields=sheets.properties.title', { headers: auth });
+      return (meta.sheets || []).map((s) => s.properties && s.properties.title).filter(Boolean);
+    },
+    // Resolve a tab's numeric sheetId (needed to delete a row).
+    async sheetId(title) {
+      const meta = await call(base + '?fields=sheets.properties(title,sheetId)', { headers: auth });
+      const s = (meta.sheets || []).find((x) => x.properties && x.properties.title === title);
+      return s ? s.properties.sheetId : null;
+    },
+    // Delete a single row (1-based) from a tab, shifting rows below it up.
+    async deleteRow(sheetId, row1Based) {
+      return call(base + ':batchUpdate',
+        { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requests: [{ deleteDimension: { range: {
+            sheetId, dimension: 'ROWS', startIndex: row1Based - 1, endIndex: row1Based } } }] }) });
+    },
+    // Read every value in a tab (including the header row).
+    async readAll(tab) {
+      const j = await call(base + '/values/' + encodeURIComponent(tab)
+        + '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING', { headers: auth });
+      return j.values || [];
+    },
+    // Create a tab (with a header row) if it doesn't already exist.
+    async ensureTab(title, header) {
+      const meta = await call(base + '?fields=sheets.properties.title', { headers: auth });
+      const exists = (meta.sheets || []).some((s) => s.properties && s.properties.title === title);
+      if (exists) return false;
+      await call(base + ':batchUpdate',
+        { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }) });
+      if (header && header.length) {
+        await call(base + '/values/' + encodeURIComponent(title) + '!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+          { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [header] }) });
       }
-      ensuredTabs.add(key);
+      return true;
+    },
+    // Clear all data rows (row 2 down), keeping the header row. No-op if the tab doesn't exist.
+    async clearRows(tab) {
+      try {
+        return await call(base + '/values/' + encodeURIComponent(tab + '!A2:Z100000') + ':clear',
+          { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: '{}' });
+      } catch (err) {
+        if (String((err && err.message) || '').indexOf('Unable to parse range') !== -1) return null;
+        throw err;
+      }
+    },
+    // Append; if the tab doesn't exist yet, create it (with header) and retry once.
+    async appendEnsuring(tab, row, header) {
+      try {
+        return await this.append(tab, row);
+      } catch (err) {
+        if (String((err && err.message) || '').indexOf('Unable to parse range') !== -1) {
+          await this.ensureTab(tab, header);
+          return await this.append(tab, row);
+        }
+        throw err;
+      }
     },
   };
 }
