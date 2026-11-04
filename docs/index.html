@@ -221,6 +221,10 @@ input,select{font-family:inherit;font-size:16px}
 .stgh .gt small{display:block;font-size:10px;color:var(--ink-soft);font-weight:700}
 .stgroup .entry{border:0;border-top:1px solid var(--line);border-radius:0;margin:0}
 .stgroup .stwarn{padding:0 13px 8px}
+.stbldg{display:inline-block;margin-left:6px;font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:700;color:var(--dept);background:var(--dept-soft);border-radius:6px;padding:1px 7px;vertical-align:1px}
+.stmulti{font-size:13px;font-weight:700;color:var(--dept);background:var(--dept-soft);border-radius:10px;padding:8px 12px;margin-bottom:10px}
+.sd-bh{display:flex;justify-content:space-between;align-items:center;margin:10px 0 0;padding:7px 10px;border-radius:8px;background:var(--dept-soft);color:var(--dept);font-size:13px;font-weight:700;font-family:'JetBrains Mono',ui-monospace,monospace}
+.sd-bh b{font-family:'Inter',system-ui,sans-serif}
 .recent h3 .stsum{font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--dept);text-transform:none;letter-spacing:0}
 .stline{align-items:center}
 .stline .info{cursor:pointer}
@@ -664,7 +668,7 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
         <div class="scanbay">
           <div class="shiphead"><span class="stepbadge">1</span> Shipment <span class="edittag" id="stEditTag" hidden></span></div>
           <div class="shipform">
-            <div class="fld"><label>Ships from building</label>
+            <div class="fld"><label>Pulling from building <span class="tag">switch any time — applies to the next lots</span></label>
               <select id="st_from" onchange="stFromChange()"></select></div>
             <div class="fld"><label>Order # / customer <span class="tag">optional</span></label>
               <input id="st_order" autocomplete="off" inputmode="none" readonly placeholder="e.g. PO 45512 / Acme" onfocus="tkBind('st_order')" onblur="tkOnBlur()" oninput="stOrderChange()"></div>
@@ -928,7 +932,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v75-lots-by-product';
+var APP_VERSION = 'v76-multi-building';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1264,7 +1268,8 @@ var shipOpenId = '';                                     // staged shipment open
 function shipUser(){ return (($('counterName')&&$('counterName').value)||'').trim() || (AUTH&&AUTH.name) || ''; }
 function stPersist(){ try{ localStorage.setItem('cscShipDraft', JSON.stringify(stDraft)); }catch(e){} }
 function stRestore(){
-  try{ const d=JSON.parse(localStorage.getItem('cscShipDraft')||'null'); if(d && Array.isArray(d.lines)) stDraft=d; }catch(e){}
+  try{ const d=JSON.parse(localStorage.getItem('cscShipDraft')||'null');
+    if(d && Array.isArray(d.lines)){ d.lines.forEach(function(l){ if(!l.from) l.from=d.from||''; }); stDraft=d; } }catch(e){}
 }
 function focusShipItem(){ setTimeout(function(){ const el=$('s_item'); if(el && !$('stagePane').hidden) el.focus(); }, 60); }
 function shipMode(m){
@@ -1288,16 +1293,22 @@ function stFillFrom(){
   let cur=stDraft.from;
   if(!cur){ try{ cur=localStorage.getItem('cscShipFrom')||''; }catch(e){} }
   const opts=BUILDINGS.filter(function(b){ return !b.production; });
-  sel.innerHTML='<option value="">— pick building —</option>'+opts.map(function(b){
-    return '<option value="'+esc(b.name)+'"'+(b.name===cur?' selected':'')+'>'+esc(b.name)+'</option>'; }).join('');
+  const names=opts.map(function(b){ return b.name; });
+  if(cur && names.indexOf(cur)===-1) names.push(cur);
+  sel.innerHTML='<option value="">— pick building —</option>'+names.map(function(n){
+    return '<option value="'+esc(n)+'"'+(n===cur?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
   stDraft.from = sel.value;
   const o=$('st_order'); if(o) o.value=stDraft.order||'';
 }
 function stFromChange(){
   stDraft.from=$('st_from').value; stPersist();
   try{ localStorage.setItem('cscShipFrom', stDraft.from); }catch(e){}
+  if(state.ship&&state.ship.item) showShipInfo(state.ship.item, state.ship.desc, state.ship.per, !IDXALL[norm(state.ship.item)]);
   stRender();
+  if(stDraft.from && stDraft.lines.length) toast('Next lots come from '+stDraft.from);
 }
+function stSetFrom(n){ const sel=$('st_from'); stDraft.from=n||''; if(sel){ if(n && !Array.prototype.some.call(sel.options,function(o){ return o.value===n; })){ const o=document.createElement('option'); o.value=o.textContent=n; sel.appendChild(o); } sel.value=stDraft.from; } }
+function sameLine(l, item, lot, from){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot) && (l.from||'')===(from||''); }
 function stOrderChange(){ stDraft.order=($('st_order').value||''); stPersist(); }
 
 function shipItemEnter(e){ if(e.key!=='Enter') return; e.preventDefault(); shipLookup(); }
@@ -1387,6 +1398,7 @@ function stUpdateLotHint(){
 // Validate + normalize the lot field, asking for the shift on plastics when missing; then run done(lot).
 var _shiftCb=null;
 function shipLotCommit(done){
+  if(!stDraft.from){ toast('Pick the building these pallets are pulled from','err'); kpHide(); const sf=$('st_from'); if(sf){ sf.focus(); sf.scrollIntoView({block:'center',behavior:'smooth'}); } return; }
   if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
   if(!(state.ship&&state.ship.item)){ toast('Scan the product code first','err'); focusShipItem(); return; }
   if(state.ship.lot && state.ship.lot===($('s_lot').value||'').trim()){ done(state.ship.lot); return; }
@@ -1415,7 +1427,7 @@ function shipLotEnter(e){
   if(e.key!=='Enter') return; e.preventDefault();
   shipLotCommit(function(lot){
     const item=state.ship.item;
-    const L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+    const L=stDraft.lines.find(function(l){ return sameLine(l, item, lot, stDraft.from); });
     if(L){
       L.pallets=(Number(L.pallets)||0)+1; stLineTotal(L); stPersist(); stRender(L);
       toast('+1 pallet · lot '+lot+' (now '+L.pallets+')');
@@ -1445,11 +1457,11 @@ function stAddLine(){
   shipLotCommit(function(lot){
     if(pallets<=0 && loose<=0){ toast('Enter how many pallets have this lot','err'); nextField('s_pallets'); return; }
     const item=state.ship.item;
-    let L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+    let L=stDraft.lines.find(function(l){ return sameLine(l, item, lot, stDraft.from); });
     if(L){ L.pallets=(Number(L.pallets)||0)+pallets; L.loose=(Number(L.loose)||0)+loose; }
-    else { L={ item:item, desc:state.ship.desc||'', lot:lot, per:state.ship.per||0, key:state.ship.key||'', pallets:pallets, loose:loose }; stDraft.lines.push(L); }
+    else { L={ item:item, desc:state.ship.desc||'', lot:lot, from:stDraft.from, per:state.ship.per||0, key:state.ship.key||'', pallets:pallets, loose:loose }; stDraft.lines.push(L); }
     stLineTotal(L); stPersist(); stRender(L);
-    toast('Added lot '+lot+' · '+pallets+' pal');
+    toast('Added lot '+lot+' · '+pallets+' pal · '+stDraft.from);
     shipResetLot();
   });
 }
@@ -1493,7 +1505,7 @@ function stRemove(i){
 // Put a line back into the scan fields to change its counts.
 function stEditLine(i){
   const L=stDraft.lines[i]; if(!L) return;
-  stDraft.lines.splice(i,1); stPersist();
+  stDraft.lines.splice(i,1); stSetFrom(L.from||stDraft.from); stPersist();
   $('s_item').value=L.item; $('s_itemX').classList.add('show');
   const hk=IDXALL[norm(L.item)];
   state.ship={ item:L.item, desc:L.desc, per:L.per, key:(L.key||(hk?hk.key:'')), lot:L.lot };
@@ -1505,15 +1517,16 @@ function stEditLine(i){
   nextField('s_pallets');
 }
 // Units of an item available to stage from a building: on hand minus other staged shipments' reservations.
-function stAvailable(code, desc){
+function stAvailable(code, desc, bldg){
+  bldg = bldg || stDraft.from;
   const ready=(LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
-  if(!ready || LOG_ERR || MOVES_ERR || !stDraft.from) return null;
+  if(!ready || LOG_ERR || MOVES_ERR || !bldg) return null;
   const id=invKey(code, desc);
-  const P=(computeInventory()[stDraft.from]||{})[id.key];
+  const P=(computeInventory()[bldg]||{})[id.key];
   let avail=P?P.qty:0;
   (STAGED.staged||[]).forEach(function(S){
-    if(S.id===stDraft.id || S.fromBuilding!==stDraft.from) return;
-    S.lines.forEach(function(l){ if(invKey(l.item,l.desc).key===id.key) avail-=Number(l.total)||0; });
+    if(S.id===stDraft.id) return;
+    S.lines.forEach(function(l){ if((l.fromBuilding||S.fromBuilding)===bldg && invKey(l.item,l.desc).key===id.key) avail-=Number(l.total)||0; });
   });
   return avail;
 }
@@ -1534,19 +1547,24 @@ function stRender(flash){
     G.idx.push(i); G.pallets+=Number(l.pallets)||0; G.units+=Number(l.total)||0;
   });
   const curItem=state.ship&&state.ship.item;
-  host.innerHTML=groups.map(function(G){
-    const a=stAvailable(G.item,G.desc);
-    const short=(a!=null && G.units>a);
+  const multi=lines.some(function(l){ return (l.from||'')!==(lines[0].from||''); });
+  host.innerHTML=(multi ? '<div class="stmulti">Pulling from '+lines.map(function(l){ return l.from; }).filter(function(b,i,a){ return b && a.indexOf(b)===i; }).map(esc).join(' + ')+'</div>' : '')
+    + groups.map(function(G){
+    // availability is per building: total this product's lots in each building and check each one
+    const perB={};
+    G.idx.forEach(function(i){ const l=lines[i]; const b=l.from||stDraft.from; perB[b]=(perB[b]||0)+(Number(l.total)||0); });
+    const shorts=Object.keys(perB).map(function(b){ const a=stAvailable(G.item,G.desc,b); return (a!=null && perB[b]>a) ? {b:b,a:a} : null; }).filter(Boolean);
+    const short=shorts.length>0;
     const cur=curItem && norm(curItem)===norm(G.item);
     return '<div class="stgroup'+(cur?' cur':'')+(short?' warn':'')+'">'
       + '<div class="stgh"><div style="min-width:0"><div class="c">'+esc(G.item)+(cur?' · adding lots':'')+'</div><div class="d">'+esc(G.desc||'')+'</div></div>'
       + '<div class="gt">'+G.pallets+' PAL<small>'+G.units.toLocaleString()+' units · '+G.idx.length+' lot'+(G.idx.length===1?'':'s')+'</small></div></div>'
-      + (short ? '<div class="stwarn">⚠ Only '+Math.max(0,a).toLocaleString()+' available in '+esc(stDraft.from)+' (incl. other staged orders)</div>' : '')
+      + shorts.map(function(x){ return '<div class="stwarn">⚠ Only '+Math.max(0,x.a).toLocaleString()+' available in '+esc(x.b)+' (incl. other staged orders)</div>'; }).join('')
       + G.idx.map(function(i){
           const l=lines[i];
           return '<div class="entry stline'+(flash===l?' flash':'')+'">'
             + '<div class="info" onclick="stEditLine('+i+')">'
-            +   '<div class="c">Lot '+esc(l.lot)+'</div>'
+            +   '<div class="c">Lot '+esc(l.lot)+' <span class="stbldg">'+esc(l.from||'?')+'</span></div>'
             +   '<div class="m">'+(Number(l.loose)>0?Number(l.loose).toLocaleString()+' loose · ':'')+(Number(l.total)||0).toLocaleString()+' units · tap to edit</div>'
             + '</div>'
             + '<div class="stctl">'
@@ -1566,13 +1584,14 @@ function stDiscard(){
   shipResetLine(); stRender();
 }
 function stSave(){
-  if(!stDraft.from){ toast('Pick the building it ships from','err'); const s=$('st_from'); if(s) s.focus(); return; }
+  const noB=stDraft.lines.find(function(l){ return !l.from; });
+  if(noB){ toast('Lot '+noB.lot+' has no building — tap it to fix','err'); return; }
   if(!stDraft.lines.length){ toast('Add at least one lot first','err'); focusShipItem(); return; }
   if(($('s_lot').value||'').trim() && !(state.ship&&state.ship.lot) && !confirm('The lot you scanned hasn’t been added yet. Stage without it?')) return;
   const btn=$('stSave'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   kpHide(); tkHide();
   const payload={ shipmentId:stDraft.id||'', user:shipUser(), order:stDraft.order||'', fromBuilding:stDraft.from,
-    lines:stDraft.lines.map(function(l){ return { item:l.item, desc:l.desc, lot:l.lot, pallets:l.pallets, loose:l.loose, unitsPerPallet:(l.per||'') }; }) };
+    lines:stDraft.lines.map(function(l){ return { item:l.item, desc:l.desc, lot:l.lot, fromBuilding:l.from, pallets:l.pallets, loose:l.loose, unitsPerPallet:(l.per||'') }; }) };
   const pal=stDraft.lines.reduce(function(t,l){ return t+(Number(l.pallets)||0); },0);
   callApi('saveStagedShipment',[payload]).then(function(r){
     toast('Staged · '+pal+' pallets');
@@ -1630,6 +1649,18 @@ function renderShipPane(){
 }
 function openShipment(id){ shipOpenId=id; renderShipPane(); window.scrollTo({top:0, behavior:'smooth'}); setTimeout(function(){ const b=$('sh_bol'); if(b) b.focus(); },80); }
 function closeShipment(){ shipOpenId=''; kpHide(); renderShipPane(); }
+// Lines grouped by the building they're pulled from, in Buildings-tab order.
+function shipByBuilding(S){
+  const map={}, out=[];
+  S.lines.forEach(function(l){
+    const b=l.fromBuilding||S.fromBuilding||'?';
+    let B=map[b]; if(!B){ B=map[b]={ name:b, lines:[], pallets:0 }; out.push(B); }
+    B.lines.push(l); B.pallets+=Number(l.pallets)||0;
+  });
+  const order=BUILDINGS.map(function(b){ return b.name; });
+  out.sort(function(a,b){ const ia=order.indexOf(a.name), ib=order.indexOf(b.name); return (ia===-1?99:ia)-(ib===-1?99:ib); });
+  return out;
+}
 function renderShipDetail(S){
   const det=$('shipDetail');
   const keepBol=($('sh_bol')&&$('sh_bol').value)||'', keepCnt=($('sh_count')&&$('sh_count').value)||'';
@@ -1638,10 +1669,13 @@ function renderShipDetail(S){
     + '<div class="card shipdet"><div class="card-head"><div class="code">'+esc(S.id)+'</div>'
     +   '<div class="sd-title">'+esc(S.order||'Shipment')+'</div>'
     +   '<div class="sd-sub">From '+esc(S.fromBuilding)+' · staged '+esc(fmtWhen(S.stagedAt))+(S.stagedBy?' by '+esc(S.stagedBy):'')+'</div></div>'
-    +   '<div class="sd-lines">'+S.lines.map(function(l){
-          return '<div class="sd-line"><div class="sd-l"><b>'+esc(l.item)+'</b> · lot '+esc(l.lot)
-            + '<div class="sd-d">'+esc(l.desc||'')+(l.loose?' · +'+l.loose.toLocaleString()+' loose':'')+'</div></div>'
-            + '<div class="sd-q">'+l.pallets+'<small>PAL</small></div></div>';
+    +   '<div class="sd-lines">'+shipByBuilding(S).map(function(B){
+          return '<div class="sd-bh"><span>📍 Pull from <b>'+esc(B.name)+'</b></span><span>'+B.pallets+' PAL</span></div>'
+            + B.lines.map(function(l){
+              return '<div class="sd-line"><div class="sd-l"><b>'+esc(l.item)+'</b> · lot '+esc(l.lot)
+                + '<div class="sd-d">'+esc(l.desc||'')+(l.loose?' · +'+l.loose.toLocaleString()+' loose':'')+'</div></div>'
+                + '<div class="sd-q">'+l.pallets+'<small>PAL</small></div></div>';
+            }).join('');
         }).join('')
     +   '<div class="sd-line sd-tot"><div class="sd-l">Total</div><div class="sd-q">'+S.pallets+'<small>PAL</small></div></div>'
     +   '<div class="sd-units">'+(Number(S.units)||0).toLocaleString()+' units</div></div></div>'
@@ -1689,11 +1723,11 @@ function markShipped(){
 function editShipment(){
   const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); if(!S) return;
   if(stDraft.lines.length && stDraft.id!==S.id && !confirm('You have an unsaved shipment on the Stage tab. Replace it with '+(S.order||S.id)+'?')) return;
-  stDraft={ id:S.id, order:S.order||'', from:S.fromBuilding, lines:S.lines.map(function(l){
-    const hk=IDXALL[norm(l.item)]; return { item:l.item, desc:l.desc, lot:l.lot, key:(hk?hk.key:''), per:Number(l.unitsPerPallet)||0, pallets:l.pallets, loose:l.loose, total:l.total }; }) };
+  stDraft={ id:S.id, order:S.order||'', from:((S.lines[0]&&S.lines[0].fromBuilding)||S.fromBuilding), lines:S.lines.map(function(l){
+    const hk=IDXALL[norm(l.item)]; return { item:l.item, desc:l.desc, lot:l.lot, from:(l.fromBuilding||S.fromBuilding), key:(hk?hk.key:''), per:Number(l.unitsPerPallet)||0, pallets:l.pallets, loose:l.loose, total:l.total }; }) };
   stPersist(); shipOpenId='';
   stFillFrom();
-  if($('st_from').value!==S.fromBuilding){ const o=document.createElement('option'); o.value=o.textContent=S.fromBuilding; $('st_from').appendChild(o); $('st_from').value=S.fromBuilding; }
+  stSetFrom(stDraft.from);
   shipMode('stage');
 }
 function cancelShipment(){
@@ -1711,7 +1745,8 @@ function computeReserved(){
       const id=invKey(l.item,l.desc); if(!id.key) return;
       const P=out[id.key]||(out[id.key]={ code:id.code, desc:id.desc, qty:0, pallets:0, bldgs:{} });
       P.qty+=Number(l.total)||0; P.pallets+=Number(l.pallets)||0;
-      P.bldgs[S.fromBuilding]=(P.bldgs[S.fromBuilding]||0)+(Number(l.total)||0);
+      const fb=l.fromBuilding||S.fromBuilding;
+      P.bldgs[fb]=(P.bldgs[fb]||0)+(Number(l.total)||0);
     });
   });
   return out;
