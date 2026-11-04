@@ -195,7 +195,59 @@ input,select{font-family:inherit;font-size:16px}
 .shipinfo .si-desc{font-size:14px;color:var(--ink);margin-top:2px}
 .shipinfo .si-per{font-size:11px;color:var(--ink-soft);font-weight:700;margin-top:3px}
 .shipinfo.unknown{background:#fff6ec;border-color:#f0d6ad}
-.shipqty{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+/* ship out: stage + ship */
+#shipSeg{margin-bottom:2px}
+#shipSeg button{display:flex;align-items:center;justify-content:center;gap:6px}
+.segn{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--dept-accent);color:#fff;font-size:12px;font-weight:800}
+.edittag{margin-left:auto;font-size:11px;font-weight:800;color:var(--dept-accent);background:#fff4e5;border:1px solid #f0d6ad;border-radius:6px;padding:2px 7px;font-family:'JetBrains Mono',ui-monospace,monospace}
+.shipform{display:grid;gap:10px}
+.shipform select{height:52px;border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:0 12px;font-size:16px;font-weight:700;color:var(--dept);width:100%}
+.shipform select:focus{border-color:var(--dept);outline:none}
+.shipqty{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 2px 0 var(--line);display:grid;gap:10px}
+.shipqty .shiphead{margin-bottom:0}
+.btn.addline{width:100%;flex:none}
+.recent h3 .stsum{font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--dept);text-transform:none;letter-spacing:0}
+.stline{align-items:center}
+.stline .info{cursor:pointer}
+.stline.warn{border-color:#f0d6ad;background:#fffaf2}
+.stline.flash{animation:stflash .9s ease}
+@keyframes stflash{0%{background:var(--dept-soft)}100%{background:var(--panel)}}
+.stwarn{font-size:12px;font-weight:700;color:#a15c00;margin-top:4px}
+.stctl{display:flex;align-items:center;gap:6px;flex:none}
+.stctl .btn.tiny{min-width:38px;padding:0;font-size:18px;border:1.5px solid var(--line);background:#fff;color:var(--dept)}
+.stpal{display:flex;flex-direction:column;align-items:center;min-width:34px;font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1}
+.stpal b{font-size:18px;font-weight:800}
+.stpal small{font-size:9px;color:var(--ink-soft);font-weight:700;margin-top:2px}
+.shiplisth{font-size:13px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;margin:4px 2px 8px}
+.shipcard{display:block;width:100%;text-align:left;background:var(--panel);border:1.5px solid var(--line);border-left:5px solid var(--dept);border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;color:var(--ink)}
+.shipcard:active{background:var(--dept-soft)}
+.shipcard .sc-top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:16px}
+.shipcard .sc-pal,.sd-q{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:800}
+.shipcard .sc-pal{font-size:20px;color:var(--dept)}
+.shipcard .sc-pal small,.sd-q small{font-size:10px;color:var(--ink-soft);margin-left:3px}
+.shipcard .sc-sub{font-size:14px;margin-top:3px}
+.shipcard .sc-meta{font-size:12px;color:var(--ink-soft);margin-top:3px}
+.backlink{display:inline-block;margin:2px 2px 10px;background:none;border:0;padding:0}
+.shipdet{margin-bottom:12px}
+.shipdet .sd-title{font-size:18px;font-weight:800;margin-top:2px}
+.shipdet .sd-sub{font-size:12px;opacity:.85;margin-top:2px}
+.sd-lines{padding:4px 14px 12px}
+.sd-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.sd-l{min-width:0;font-size:14px}
+.sd-l b{font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--dept)}
+.sd-d{font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sd-q{font-size:18px;flex:none}
+.sd-tot{border-bottom:0;font-weight:800}
+.sd-units{text-align:right;font-size:12px;color:var(--ink-soft);font-weight:700}
+#sh_bol{width:100%;height:var(--tap);border:2px solid var(--dept);border-radius:11px;background:#fff;padding:0 16px 0 40px;font-family:'JetBrains Mono';font-weight:700;font-size:22px;color:var(--ink);outline:none}
+#sh_bol:focus{box-shadow:0 0 0 4px var(--dept-soft)}
+#sh_bol::placeholder{font-size:14px;font-weight:600;color:var(--ink-soft);font-family:'Inter',system-ui,sans-serif}
+.shcheck{border-radius:10px;padding:10px 12px;font-size:14px;font-weight:700}
+.shcheck.ok{background:#e8f6ee;color:var(--ok);border:1px solid #bfe5cf}
+.shcheck.bad{background:#fff4e5;color:#a15c00;border:1px solid #f0d6ad}
+.shipacts{padding:0}
+.shipacts .btn.ghost{flex:0 0 auto;padding:0 12px;font-size:14px}
+.btn.primary.ok{background:var(--ok)}
 .fromnote{font-size:12px;color:var(--ink-soft);margin-top:8px}
 .stepbtn{flex:0 0 58px;border-radius:10px;background:var(--dept);color:#fff;font-weight:800;font-size:20px;display:grid;place-items:center;cursor:pointer}
 .stepbtn:active{filter:brightness(.92)}
@@ -576,67 +628,97 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
     </div>
   </section>
 
-  <!-- SHIP OUT (record products shipped out: item # + lot # + pallets/loose) -->
+  <!-- SHIP OUT: stage a shipment (item + lot + pallets per line), then ship it (BOL + pallet check) -->
   <section id="shipout" hidden>
     <div class="topbar">
       <div class="title">
         <div class="dpt"><img class="csc-logo" src="csc-logo.jpg" alt="CSC" width="28" height="28"> <span>Ship out</span></div>
         <div class="who" id="shipWho"></div>
       </div>
-      <div class="count-badge"><b id="shipCount">0</b><small>shipped</small></div>
+      <button type="button" class="topbtn" id="shipRefresh" onclick="loadStaged(true)" aria-label="Refresh">↻</button>
     </div>
     <div class="body">
-      <div class="scanbay">
-        <div class="shiphead" id="s_itemHead"><span class="stepbadge">1</span> Scan item number
-          <svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg>
-        </div>
-        <div class="scan-input-wrap">
-          <span class="readout">›</span>
-          <input id="s_item" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-                 placeholder="scan or type item #, then Enter" onkeydown="shipItemEnter(event)"
-                 oninput="document.getElementById('s_itemX').classList.toggle('show', this.value.length>0)">
-          <button type="button" class="search-x scan-x" id="s_itemX" onclick="shipClearItem()" aria-label="Clear">×</button>
-        </div>
-        <div id="s_itemInfo" class="shipinfo" hidden></div>
+      <div class="seg" id="shipSeg">
+        <button type="button" id="shipSegStage" class="on" onclick="shipMode('stage')">📋 Stage</button>
+        <button type="button" id="shipSegShip" onclick="shipMode('ship')">🚚 Ship <span class="segn" id="shipStagedN" hidden></span></button>
       </div>
 
-      <div class="scanbay">
-        <div class="shiphead" id="s_lotHead"><span class="stepbadge">2</span> Scan lot number
-          <svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg>
+      <!-- STAGE: build the shipment line by line -->
+      <div id="stagePane">
+        <div class="scanbay">
+          <div class="shiphead"><span class="stepbadge">1</span> Shipment <span class="edittag" id="stEditTag" hidden></span></div>
+          <div class="shipform">
+            <div class="fld"><label>Ships from building</label>
+              <select id="st_from" onchange="stFromChange()"></select></div>
+            <div class="fld"><label>Order # / customer <span class="tag">optional</span></label>
+              <input id="st_order" autocomplete="off" inputmode="none" readonly placeholder="e.g. PO 45512 / Acme" onfocus="tkBind('st_order')" onblur="tkOnBlur()" oninput="stOrderChange()"></div>
+          </div>
         </div>
-        <div class="scan-input-wrap">
-          <span class="readout">›</span>
-          <input id="s_lot" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-                 placeholder="scan or type lot #, then Enter" onkeydown="shipLotEnter(event)"
-                 oninput="document.getElementById('s_lotX').classList.toggle('show', this.value.length>0)">
-          <button type="button" class="search-x scan-x" id="s_lotX" onclick="document.getElementById('s_lot').value='';this.classList.remove('show');document.getElementById('s_lot').focus()" aria-label="Clear">×</button>
+
+        <div class="scanbay">
+          <div class="shiphead" id="s_itemHead"><span class="stepbadge">2</span> Scan item number
+            <svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg>
+          </div>
+          <div class="scan-input-wrap">
+            <span class="readout">›</span>
+            <input id="s_item" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   placeholder="scan or type item #, then Enter" onkeydown="shipItemEnter(event)"
+                   oninput="document.getElementById('s_itemX').classList.toggle('show', this.value.length>0)">
+            <button type="button" class="search-x scan-x" id="s_itemX" onclick="shipClearItem()" aria-label="Clear">×</button>
+          </div>
+          <div id="s_itemInfo" class="shipinfo" hidden></div>
+        </div>
+
+        <div class="scanbay">
+          <div class="shiphead" id="s_lotHead"><span class="stepbadge">3</span> Scan lot number
+            <svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg>
+          </div>
+          <div class="scan-input-wrap">
+            <span class="readout">›</span>
+            <input id="s_lot" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   placeholder="scan or type lot #, then Enter" onkeydown="shipLotEnter(event)"
+                   oninput="document.getElementById('s_lotX').classList.toggle('show', this.value.length>0)">
+            <button type="button" class="search-x scan-x" id="s_lotX" onclick="document.getElementById('s_lot').value='';this.classList.remove('show');document.getElementById('s_lot').focus()" aria-label="Clear">×</button>
+          </div>
+          <div class="scan-hint"><span>Scanning a lot that's already on this shipment adds 1 pallet to it.</span></div>
+        </div>
+
+        <div class="shipqty">
+          <div class="shiphead"><span class="stepbadge">4</span> Pallets in this lot</div>
+          <div class="qtyrow">
+            <div class="fld"><label>Pallets</label>
+              <div class="biginput">
+                <input id="s_pallets" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_pallets')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField('s_loose');}">
+              </div></div>
+            <div class="fld"><label>Loose</label>
+              <div class="biginput">
+                <input id="s_loose" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_loose')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();stAddLine();}">
+              </div></div>
+          </div>
+          <div class="total-strip"><span class="lbl">Units in this line</span>
+            <span class="val"><span id="s_total">0</span><small>units</small></span></div>
+          <button type="button" class="btn primary addline" onclick="stAddLine()">＋ Add to shipment</button>
+        </div>
+
+        <div class="recent">
+          <h3><span>This shipment</span><span class="stsum" id="stSum"></span></h3>
+          <div id="stLines"><div class="empty-recent">Scan an item and lot, enter the pallets, then tap Add to shipment.</div></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn ghost" onclick="stDiscard()">Discard</button>
+          <button class="btn primary" id="stSave" onclick="stSave()">📋 Save staged shipment</button>
         </div>
       </div>
 
-      <div class="shipqty">
-        <div class="shiphead"><span class="stepbadge">3</span> Quantity shipped out</div>
-        <div class="qtyrow">
-          <div class="fld"><label>Pallets</label>
-            <div class="biginput">
-              <input id="s_pallets" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_pallets')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField('s_loose');}">
-            </div></div>
-          <div class="fld"><label>Loose</label>
-            <div class="biginput">
-              <input id="s_loose" class="big" inputmode="none" readonly value="0" oninput="shipCalc()" onfocus="this.select();kpBind('s_loose')" onblur="kpOnBlur()" onkeydown="if(event.key==='Enter'){event.preventDefault();saveShipment();}">
-            </div></div>
+      <!-- SHIP: pick a staged shipment, scan the BOL, confirm the pallet count, mark shipped -->
+      <div id="shipPane" hidden>
+        <div id="shipList"></div>
+        <div id="shipDetail" hidden></div>
+        <div class="recent" id="shippedWrap">
+          <h3>Recently shipped</h3>
+          <div id="shippedList"><div class="empty-recent">Shipped orders will appear here.</div></div>
         </div>
-        <div class="total-strip"><span class="lbl">Total units shipped</span>
-          <span class="val"><span id="s_total">0</span><small>units</small></span></div>
-      </div>
-
-      <div class="actions">
-        <button class="btn ghost" onclick="shipClear()">Clear</button>
-        <button class="btn primary" id="s_save" onclick="saveShipment()">🚚 Record shipment</button>
-      </div>
-
-      <div class="recent">
-        <h3>Shipped this session</h3>
-        <div id="shipRecent"><div class="empty-recent">Recorded shipments will appear here after you save them.</div></div>
       </div>
     </div>
   </section>
@@ -817,7 +899,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v73-shipout-ui';
+var APP_VERSION = 'v74-staged-shipments';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -916,7 +998,7 @@ function buildingsWithStock(item, key){
     if(!mine(m.product, m.barcode, m.desc)) return;
     const q = Number(m.qtyEach)||0; if(!q) return;
     add(m.fromBuilding, -q);
-    add(m.toBuilding, q);
+    if(!isShippedOut(m.toBuilding)) add(m.toBuilding, q);   // shipped stock has left the plant
   });
   const out = [];
   Object.keys(byBldg).forEach(function(name){
@@ -1021,7 +1103,7 @@ function computeInventory(){
     const q = Number(m.qtyEach)||0; if(!q) return;
     const id = invKey(m.barcode||m.product, m.desc);
     add(m.fromBuilding, id, -q);
-    add(m.toBuilding, id, q);
+    if(!isShippedOut(m.toBuilding)) add(m.toBuilding, id, q);   // shipped stock has left the plant
   });
   return inv;
 }
@@ -1098,11 +1180,31 @@ function renderInventory(){
         }).join('')
       + '</div></div>';
   }
+  // ---- Reserved by staged shipments (still in inventory until marked shipped) ----
+  const res = computeReserved();
+  const rk = Object.keys(res)
+    .filter(function(k){ const p=res[k]; return p.qty>0 && (!q || norm(p.code).indexOf(q)!==-1 || norm(p.desc).indexOf(q)!==-1 || Object.keys(p.bldgs).some(function(bn){ return norm(bn).indexOf(q)!==-1; })); })
+    .sort(function(a,b){ return res[b].qty - res[a].qty; });
+  if(rk.length){
+    const rTotal = rk.reduce(function(t,k){ return t+res[k].qty; }, 0);
+    stagedHtml += '<div class="inv-b staged"><div class="inv-bh">'
+      + '<span class="inv-bn">🚚 Reserved for staged shipments</span>'
+      + '<span class="inv-bt">'+rTotal.toLocaleString()+' units · '+(STAGED.staged||[]).length+' order'+((STAGED.staged||[]).length===1?'':'s')+'</span></div>'
+      + '<div class="inv-rows">'
+      + rk.map(function(k){
+          const p=res[k];
+          const chips = Object.keys(p.bldgs).map(function(bn){ return esc(bn)+' '+p.bldgs[bn].toLocaleString(); }).join(' · ');
+          const sub = (p.desc && p.desc!==p.code ? esc(p.desc)+' — ' : '') + p.pallets+' pal · from '+chips;
+          return '<div class="inv-row"><span class="inv-p"><b>'+esc(p.code||p.desc||'?')+'</b><span class="inv-d">'+sub+'</span></span>'
+            + '<span class="inv-q">'+p.qty.toLocaleString()+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  }
   host.innerHTML = (html + stagedHtml) || '<div class="inv-empty">'+(q?'No products match “'+esc(q)+'.”':'No live inventory yet — counts and moves will show up here.')+'</div>';
 }
 function refreshInventory(){
   const btn=$('invRefresh'); if(btn){ btn.disabled=true; btn.textContent='…'; }
-  Promise.all([loadLogs(), loadMoves()]).then(function(){ renderInventory(); })
+  Promise.all([loadLogs(), loadMoves(), loadStaged()]).then(function(){ renderInventory(); })
     .catch(function(){ renderInventory(); })
     .then(function(){ if(btn){ btn.disabled=false; btn.textContent='↻'; } });
 }
@@ -1120,13 +1222,55 @@ function showView(v){
   if(ti) ti.classList.toggle('on', v==='inventory');
   if(ts) ts.classList.toggle('on', v==='shipout');
   if(v==='inventory'){ renderInventory(); }
-  else if(v==='shipout'){ const w=$('shipWho'); if(w) w.textContent=($('counterName')&&$('counterName').value)||''; renderShipRecent(); focusShipItem(); }
+  else if(v==='shipout'){ enterShipView(); }
   else { focusScan(); }
 }
 
-/* ---- Ship out: record products shipped out (item # + lot # + pallets/loose) ---- */
-var shipSession = [];                 // this-session shipments, newest first
-function focusShipItem(){ setTimeout(function(){ const el=$('s_item'); if(el) el.focus(); }, 60); }
+/* ---- Ship out: STAGE a shipment line by line, then SHIP it (BOL + pallet check -> deducts inventory) ---- */
+var SHIPPED_OUT = 'Shipped Out';                       // pseudo-building shipped stock moves to (not inventory)
+function isShippedOut(n){ return norm(n)===norm(SHIPPED_OUT); }
+var STAGED = { staged:[], shipped:[] }, STAGED_LOADED=false;
+var stDraft = { id:'', order:'', from:'', lines:[] };   // the shipment being staged on this device
+var shipOpenId = '';                                     // staged shipment opened on the Ship pane
+function shipUser(){ return (($('counterName')&&$('counterName').value)||'').trim() || (AUTH&&AUTH.name) || ''; }
+function stPersist(){ try{ localStorage.setItem('cscShipDraft', JSON.stringify(stDraft)); }catch(e){} }
+function stRestore(){
+  try{ const d=JSON.parse(localStorage.getItem('cscShipDraft')||'null'); if(d && Array.isArray(d.lines)) stDraft=d; }catch(e){}
+}
+function focusShipItem(){ setTimeout(function(){ const el=$('s_item'); if(el && !$('stagePane').hidden) el.focus(); }, 60); }
+function shipMode(m){
+  state.shipMode = m;
+  kpHide(); tkHide();
+  $('stagePane').hidden = (m!=='stage');
+  $('shipPane').hidden = (m!=='ship');
+  $('shipSegStage').classList.toggle('on', m==='stage');
+  $('shipSegShip').classList.toggle('on', m==='ship');
+  if(m==='stage'){ stRender(); focusShipItem(); }
+  else { renderShipPane(); loadStaged(); }
+}
+function enterShipView(){
+  const w=$('shipWho'); if(w) w.textContent=shipUser();
+  stFillFrom();
+  shipMode(state.shipMode||'stage');
+}
+// From-building select: real (non-production) buildings.
+function stFillFrom(){
+  const sel=$('st_from'); if(!sel) return;
+  let cur=stDraft.from;
+  if(!cur){ try{ cur=localStorage.getItem('cscShipFrom')||''; }catch(e){} }
+  const opts=BUILDINGS.filter(function(b){ return !b.production; });
+  sel.innerHTML='<option value="">— pick building —</option>'+opts.map(function(b){
+    return '<option value="'+esc(b.name)+'"'+(b.name===cur?' selected':'')+'>'+esc(b.name)+'</option>'; }).join('');
+  stDraft.from = sel.value;
+  const o=$('st_order'); if(o) o.value=stDraft.order||'';
+}
+function stFromChange(){
+  stDraft.from=$('st_from').value; stPersist();
+  try{ localStorage.setItem('cscShipFrom', stDraft.from); }catch(e){}
+  stRender();
+}
+function stOrderChange(){ stDraft.order=($('st_order').value||''); stPersist(); }
+
 function shipItemEnter(e){ if(e.key!=='Enter') return; e.preventDefault(); shipLookup(); }
 function shipLookup(){
   const raw=($('s_item').value||'').trim(); if(!raw){ return; }
@@ -1134,7 +1278,7 @@ function shipLookup(){
   state.ship = state.ship || {};
   if(hit && isVariantSelector(hit.it)){
     // a base "Check Value" code — needs a specific type before it can be shipped
-    showShipInfo(raw, 'Scan the specific item code (e.g. '+esc(raw)+'-K) — this one needs a type', 0, true);
+    showShipInfo(raw, 'Scan the specific item code (e.g. '+raw+'-K) — this one needs a type', 0, true);
     state.ship.item=''; state.ship.desc=''; state.ship.per=0;
     return;
   }
@@ -1153,9 +1297,11 @@ function showShipInfo(code, desc, per, unknown){
   const box=$('s_itemInfo'); if(!box) return;
   box.hidden=false;
   box.className = 'shipinfo'+(unknown?' unknown':'');
+  const avail = (!unknown && stDraft.from) ? stAvailable(code, desc) : null;
   box.innerHTML = '<div class="si-code">'+esc(code)+'</div>'
     + '<div class="si-desc">'+esc(desc||'')+'</div>'
-    + (per>0 ? '<div class="si-per">'+per.toLocaleString()+' per pallet</div>' : '');
+    + (per>0 ? '<div class="si-per">'+per.toLocaleString()+' per pallet'
+        + (avail!=null ? ' · '+Math.max(0,avail).toLocaleString()+' available in '+esc(stDraft.from) : '')+'</div>' : '');
   const h=$('s_itemHead'); if(h) h.classList.toggle('done', !unknown);
   shipCalc();
 }
@@ -1167,9 +1313,24 @@ function shipClearItem(){
   const info=$('s_itemInfo'); if(info){ info.hidden=true; info.innerHTML=''; }
   shipCalc(); focusShipItem();
 }
+// Lot scanned: a lot already on this shipment gets +1 pallet (scan-per-pallet ready); a new lot
+// pre-fills 1 pallet and opens the keypad so they can type the real count.
 function shipLotEnter(e){
   if(e.key!=='Enter') return; e.preventDefault();
-  const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); if(el.select) el.select(); }
+  if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
+  const item=state.ship&&state.ship.item;
+  if(!item){ toast('Scan the item number first','err'); focusShipItem(); return; }
+  const lot=($('s_lot').value||'').trim();
+  if(!lot){ toast('Scan the lot number','err'); return; }
+  const L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+  if(L){
+    L.pallets=(Number(L.pallets)||0)+1; stLineTotal(L); stPersist(); stRender(L);
+    toast('+1 pallet · lot '+lot+' (now '+L.pallets+')');
+    shipResetLine();
+    return;
+  }
+  $('s_pallets').value='1'; $('s_loose').value='0'; shipCalc();
+  const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); if(el.select) el.select(); _kpFresh=true; }
 }
 function shipCalc(){
   const per=(state.ship&&state.ship.per)||0;
@@ -1178,28 +1339,25 @@ function shipCalc(){
   const t=$('s_total'); if(t) t.textContent=total.toLocaleString();
   return total;
 }
-function saveShipment(){
-  const item=(state.ship&&state.ship.item) || (($('s_item').value||'').trim());
+function stLineTotal(L){ L.total=Math.round((Number(L.pallets)||0)*(Number(L.per)||0)+(Number(L.loose)||0)); return L.total; }
+// Add (or merge into) a line from the scan fields.
+function stAddLine(){
+  if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
+  const item=state.ship&&state.ship.item;
   if(!item){ toast('Scan an item number first','err'); focusShipItem(); return; }
   const lot=($('s_lot').value||'').trim();
-  const per=(state.ship&&state.ship.per)||0;
+  if(!lot){ toast('Scan the lot number','err'); const l=$('s_lot'); if(l){ kpHide(); l.focus(); } return; }
   const pallets=asNum($('s_pallets').value), loose=asNum($('s_loose').value);
-  if(pallets<=0 && loose<=0){ toast('Enter pallets or loose shipped','err'); const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); } return; }
-  const total=Math.round(pallets*per+loose);
-  const user=($('counterName')&&$('counterName').value||'').trim() || (AUTH&&AUTH.name) || '';
-  const payload={ user:user, item:item, desc:(state.ship&&state.ship.desc)||'', lot:lot,
-    pallets:pallets, loose:loose, unitsPerPallet:(per||''), total:total };
-  const btn=$('s_save'); if(btn){ btn.disabled=true; btn.textContent='Recording…'; }
-  kpHide();
-  callApi('logShipment',[payload]).then(function(r){
-    shipSession.unshift({ ts:nowTs(), item:item, desc:payload.desc, lot:lot, pallets:pallets, loose:loose, total:(r&&r.total)!=null?r.total:total });
-    renderShipRecent();
-    toast('Shipped '+(((r&&r.total)!=null?r.total:total)).toLocaleString()+' · '+item);
-    shipClear();
-  }).catch(function(e){ toast('Save failed — try again','err'); console.error(e); })
-    .finally(function(){ if(btn){ btn.disabled=false; btn.textContent='🚚 Record shipment'; } });
+  if(pallets<=0 && loose<=0){ toast('Enter pallets or loose','err'); nextField('s_pallets'); return; }
+  let L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+  if(L){ L.pallets=(Number(L.pallets)||0)+pallets; L.loose=(Number(L.loose)||0)+loose; }
+  else { L={ item:item, desc:state.ship.desc||'', lot:lot, per:state.ship.per||0, pallets:pallets, loose:loose }; stDraft.lines.push(L); }
+  stLineTotal(L); stPersist(); stRender(L);
+  toast('Added '+item+' · lot '+lot+' · '+pallets+' pal');
+  shipResetLine();
 }
-function shipClear(){
+// Clear the scan fields for the next lot (keeps the shipment header).
+function shipResetLine(){
   state.ship=null;
   ['s_item','s_lot'].forEach(function(id){ const el=$(id); if(el) el.value=''; });
   ['s_pallets','s_loose'].forEach(function(id){ const el=$(id); if(el) el.value='0'; });
@@ -1209,17 +1367,234 @@ function shipClear(){
   const t=$('s_total'); if(t) t.textContent='0';
   kpHide(); focusShipItem();
 }
-function renderShipRecent(){
-  const c=$('shipCount'); if(c) c.textContent=shipSession.length;
-  const el=$('shipRecent'); if(!el) return;
-  if(!shipSession.length){ el.innerHTML='<div class="empty-recent">Recorded shipments will appear here after you save them.</div>'; return; }
-  el.innerHTML=shipSession.map(function(s){
-    return '<div class="entry"><div class="info">'
-      +'<div class="c">'+esc(s.item)+(s.lot?' · lot '+esc(s.lot):'')+'</div>'
-      +'<div class="d">'+esc(s.desc||'')+'</div>'
-      +'<div class="m">'+(Number(s.pallets)||0)+' pallets · '+(Number(s.loose)||0)+' loose</div></div>'
-      +'<div class="qty">'+(Number(s.total)||0).toLocaleString()+'<small>UNITS</small></div></div>';
+function stBump(i,d){
+  const L=stDraft.lines[i]; if(!L) return;
+  L.pallets=Math.max(0,(Number(L.pallets)||0)+d);
+  if(L.pallets<=0 && !(Number(L.loose)>0)){ stDraft.lines.splice(i,1); }
+  else stLineTotal(L);
+  stPersist(); stRender();
+}
+function stRemove(i){
+  const L=stDraft.lines[i]; if(!L) return;
+  if(!confirm('Remove '+L.item+' lot '+L.lot+' from this shipment?')) return;
+  stDraft.lines.splice(i,1); stPersist(); stRender();
+}
+// Put a line back into the scan fields to change its counts.
+function stEditLine(i){
+  const L=stDraft.lines[i]; if(!L) return;
+  stDraft.lines.splice(i,1); stPersist();
+  $('s_item').value=L.item; $('s_itemX').classList.add('show');
+  state.ship={ item:L.item, desc:L.desc, per:L.per };
+  showShipInfo(L.item, L.desc, L.per, !IDXALL[norm(L.item)]);
+  $('s_lot').value=L.lot; $('s_lotX').classList.add('show');
+  $('s_pallets').value=String(L.pallets||0); $('s_loose').value=String(L.loose||0); shipCalc();
+  stRender();
+  nextField('s_pallets');
+}
+// Units of an item available to stage from a building: on hand minus other staged shipments' reservations.
+function stAvailable(code, desc){
+  const ready=(LOG_LOADED||LOG_ERR) && (MOVES_LOADED||MOVES_ERR);
+  if(!ready || LOG_ERR || MOVES_ERR || !stDraft.from) return null;
+  const id=invKey(code, desc);
+  const P=(computeInventory()[stDraft.from]||{})[id.key];
+  let avail=P?P.qty:0;
+  (STAGED.staged||[]).forEach(function(S){
+    if(S.id===stDraft.id || S.fromBuilding!==stDraft.from) return;
+    S.lines.forEach(function(l){ if(invKey(l.item,l.desc).key===id.key) avail-=Number(l.total)||0; });
+  });
+  return avail;
+}
+function stRender(flash){
+  const host=$('stLines'); if(!host) return;
+  const tag=$('stEditTag'); if(tag){ tag.hidden=!stDraft.id; tag.textContent=stDraft.id?('editing '+stDraft.id):''; }
+  const sv=$('stSave'); if(sv) sv.textContent = stDraft.id ? '📋 Update staged shipment' : '📋 Save staged shipment';
+  const lines=stDraft.lines;
+  const pal=lines.reduce(function(t,l){ return t+(Number(l.pallets)||0); },0);
+  const units=lines.reduce(function(t,l){ return t+(Number(l.total)||0); },0);
+  const sum=$('stSum'); if(sum) sum.textContent = lines.length ? (pal+' pallets · '+units.toLocaleString()+' units') : '';
+  if(!lines.length){ host.innerHTML='<div class="empty-recent">Scan an item and lot, enter the pallets, then tap Add to shipment.</div>'; return; }
+  // item-level availability check (inventory isn't tracked per lot)
+  const byItem={};
+  lines.forEach(function(l){ const k=invKey(l.item,l.desc).key; byItem[k]=(byItem[k]||0)+(Number(l.total)||0); });
+  const short={};
+  Object.keys(byItem).forEach(function(k){
+    const l=lines.find(function(x){ return invKey(x.item,x.desc).key===k; });
+    const a=stAvailable(l.item,l.desc);
+    if(a!=null && byItem[k]>a) short[k]=a;
+  });
+  host.innerHTML=lines.map(function(l,i){
+    const k=invKey(l.item,l.desc).key;
+    const warn = (k in short) ? '<div class="stwarn">⚠ Only '+Math.max(0,short[k]).toLocaleString()+' available in '+esc(stDraft.from)+' (incl. other staged orders)</div>' : '';
+    return '<div class="entry stline'+((k in short)?' warn':'')+(flash===l?' flash':'')+'">'
+      + '<div class="info" onclick="stEditLine('+i+')">'
+      +   '<div class="c">'+esc(l.item)+' · lot '+esc(l.lot)+'</div>'
+      +   '<div class="d">'+esc(l.desc||'')+'</div>'
+      +   '<div class="m">'+(Number(l.loose)>0?Number(l.loose).toLocaleString()+' loose · ':'')+(Number(l.total)||0).toLocaleString()+' units · tap to edit</div>'
+      +   warn
+      + '</div>'
+      + '<div class="stctl">'
+      +   '<button type="button" class="btn tiny" onclick="stBump('+i+',-1)" aria-label="One less pallet">−</button>'
+      +   '<span class="stpal"><b>'+(Number(l.pallets)||0)+'</b><small>PAL</small></span>'
+      +   '<button type="button" class="btn tiny" onclick="stBump('+i+',1)" aria-label="One more pallet">＋</button>'
+      +   '<button type="button" class="btn tiny x" onclick="stRemove('+i+')" aria-label="Remove line">×</button>'
+      + '</div></div>';
   }).join('');
+}
+function stDiscard(){
+  if(stDraft.lines.length && !confirm(stDraft.id ? 'Stop editing? Changes not saved will be lost.' : 'Discard this shipment ('+stDraft.lines.length+' lines)?')) return;
+  stDraft={ id:'', order:'', from:stDraft.from, lines:[] }; stPersist();
+  const o=$('st_order'); if(o) o.value='';
+  shipResetLine(); stRender();
+}
+function stSave(){
+  if(!stDraft.from){ toast('Pick the building it ships from','err'); const s=$('st_from'); if(s) s.focus(); return; }
+  if(!stDraft.lines.length){ toast('Add at least one lot first','err'); focusShipItem(); return; }
+  const btn=$('stSave'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  kpHide(); tkHide();
+  const payload={ shipmentId:stDraft.id||'', user:shipUser(), order:stDraft.order||'', fromBuilding:stDraft.from,
+    lines:stDraft.lines.map(function(l){ return { item:l.item, desc:l.desc, lot:l.lot, pallets:l.pallets, loose:l.loose, unitsPerPallet:(l.per||'') }; }) };
+  const pal=stDraft.lines.reduce(function(t,l){ return t+(Number(l.pallets)||0); },0);
+  callApi('saveStagedShipment',[payload]).then(function(r){
+    toast('Staged '+((r&&r.shipmentId)||'')+' · '+pal+' pallets');
+    stDraft={ id:'', order:'', from:stDraft.from, lines:[] }; stPersist();
+    const o=$('st_order'); if(o) o.value='';
+    shipResetLine(); stRender();
+    shipMode('ship');
+  }).catch(function(e){ toast('Save failed — '+((e&&e.message)||'try again'),'err'); console.error(e); })
+    .then(function(){ if(btn){ btn.disabled=false; } stRender(); });
+}
+
+/* ---- Ship pane ---- */
+function loadStaged(force){
+  const b=$('shipRefresh'); if(force && b){ b.disabled=true; b.textContent='…'; }
+  return callApi('getStagedShipments',[]).then(function(r){
+    STAGED = { staged:(r&&r.staged)||[], shipped:(r&&r.shipped)||[] }; STAGED_LOADED=true;
+  }).catch(function(e){ console.warn('staged load failed', e); if(force) toast('Could not load staged shipments','err'); })
+    .then(function(){
+      if(b){ b.disabled=false; b.textContent='↻'; }
+      if(force) refreshInventory();
+      renderShipPane(); stRender(); renderInventory();
+    });
+}
+function fmtWhen(iso){ const d=new Date(iso); return isNaN(d) ? String(iso||'') : d.toLocaleDateString([], {month:'short', day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
+function renderShipPane(){
+  const n=$('shipStagedN'); const cnt=(STAGED.staged||[]).length;
+  if(n){ n.hidden=!cnt; n.textContent=cnt; }
+  const list=$('shipList'), det=$('shipDetail'); if(!list) return;
+  const open=shipOpenId && (STAGED.staged||[]).find(function(S){ return S.id===shipOpenId; });
+  if(shipOpenId && !open && STAGED_LOADED) shipOpenId='';
+  if(open){ list.hidden=true; det.hidden=false; renderShipDetail(open); }
+  else {
+    det.hidden=true; list.hidden=false;
+    list.innerHTML = !STAGED_LOADED ? '<div class="empty-recent">Loading staged shipments…</div>'
+      : (!cnt ? '<div class="empty-recent">Nothing staged. Build a shipment on the Stage tab first.</div>'
+      : '<div class="shiplisth">Pick the shipment you’re loading</div>' + STAGED.staged.map(function(S){
+        return '<button type="button" class="shipcard" onclick="openShipment(\''+esc(S.id)+'\')">'
+          + '<div class="sc-top"><b>'+esc(S.order||S.id)+'</b><span class="sc-pal">'+S.pallets+'<small>PAL</small></span></div>'
+          + '<div class="sc-sub">'+esc(S.fromBuilding)+' · '+S.lines.length+' lot'+(S.lines.length===1?'':'s')+' · '+(Number(S.units)||0).toLocaleString()+' units</div>'
+          + '<div class="sc-meta">Staged '+esc(fmtWhen(S.stagedAt))+(S.stagedBy?' by '+esc(S.stagedBy):'')+(S.order?' · '+esc(S.id):'')+'</div>'
+          + '</button>';
+      }).join(''));
+  }
+  const sl=$('shippedList');
+  if(sl){
+    const sh=STAGED.shipped||[];
+    sl.innerHTML = !sh.length ? '<div class="empty-recent">Shipped orders will appear here.</div>'
+      : sh.map(function(S){
+        return '<div class="entry"><div class="info"><div class="c">BOL '+esc(S.bol||'?')+'</div>'
+          + '<div class="d">'+esc(S.order||S.id)+'</div>'
+          + '<div class="m">'+esc(S.fromBuilding)+' · '+esc(fmtWhen(S.shippedAt))+(S.shippedBy?' · '+esc(S.shippedBy):'')+'</div></div>'
+          + '<div class="qty">'+S.pallets+'<small>PAL</small></div></div>';
+      }).join('');
+  }
+}
+function openShipment(id){ shipOpenId=id; renderShipPane(); window.scrollTo({top:0, behavior:'smooth'}); setTimeout(function(){ const b=$('sh_bol'); if(b) b.focus(); },80); }
+function closeShipment(){ shipOpenId=''; kpHide(); renderShipPane(); }
+function renderShipDetail(S){
+  const det=$('shipDetail');
+  const keepBol=($('sh_bol')&&$('sh_bol').value)||'', keepCnt=($('sh_count')&&$('sh_count').value)||'';
+  det.innerHTML =
+      '<button type="button" class="linkbtn backlink" onclick="closeShipment()">‹ All staged shipments</button>'
+    + '<div class="card shipdet"><div class="card-head"><div class="code">'+esc(S.id)+'</div>'
+    +   '<div class="sd-title">'+esc(S.order||'Shipment')+'</div>'
+    +   '<div class="sd-sub">From '+esc(S.fromBuilding)+' · staged '+esc(fmtWhen(S.stagedAt))+(S.stagedBy?' by '+esc(S.stagedBy):'')+'</div></div>'
+    +   '<div class="sd-lines">'+S.lines.map(function(l){
+          return '<div class="sd-line"><div class="sd-l"><b>'+esc(l.item)+'</b> · lot '+esc(l.lot)
+            + '<div class="sd-d">'+esc(l.desc||'')+(l.loose?' · +'+l.loose.toLocaleString()+' loose':'')+'</div></div>'
+            + '<div class="sd-q">'+l.pallets+'<small>PAL</small></div></div>';
+        }).join('')
+    +   '<div class="sd-line sd-tot"><div class="sd-l">Total</div><div class="sd-q">'+S.pallets+'<small>PAL</small></div></div>'
+    +   '<div class="sd-units">'+(Number(S.units)||0).toLocaleString()+' units</div></div></div>'
+    + '<div class="scanbay"><div class="shiphead"><span class="stepbadge">1</span> Scan the BOL'
+    +   '<svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg></div>'
+    +   '<div class="scan-input-wrap"><span class="readout">›</span>'
+    +   '<input id="sh_bol" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="scan or type BOL #, then Enter"'
+    +   ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();nextField(\'sh_count\');}"></div></div>'
+    + '<div class="shipqty"><div class="shiphead"><span class="stepbadge">2</span> Count the pallets on the truck</div>'
+    +   '<div class="fld"><label>Pallets loaded <span class="tag">staged: '+S.pallets+'</span></label>'
+    +   '<div class="biginput"><input id="sh_count" class="big" inputmode="none" readonly placeholder="0" oninput="shipCountCheck()" onfocus="this.select();kpBind(\'sh_count\')" onblur="kpOnBlur()"></div></div>'
+    +   '<div id="sh_check" class="shcheck" hidden></div></div>'
+    + '<div class="actions shipacts">'
+    +   '<button class="btn ghost" onclick="cancelShipment()">Cancel order</button>'
+    +   '<button class="btn ghost" onclick="editShipment()">Edit</button>'
+    +   '<button class="btn primary ok" id="sh_go" onclick="markShipped()">✓ Mark shipped</button></div>';
+  $('sh_bol').value=keepBol; $('sh_count').value=keepCnt; shipCountCheck();
+}
+function shipCountCheck(){
+  const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); const box=$('sh_check'); if(!S||!box) return;
+  const v=($('sh_count').value||'').trim();
+  if(v===''){ box.hidden=true; return; }
+  const n=asNum(v); box.hidden=false;
+  if(n===S.pallets){ box.className='shcheck ok'; box.textContent='✓ Matches the '+S.pallets+' pallets staged'; }
+  else { box.className='shcheck bad'; box.textContent='⚠ Staged '+S.pallets+' pallets but counted '+n+' — recount or edit the shipment'; }
+}
+function markShipped(){
+  const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); if(!S) return;
+  const bol=($('sh_bol').value||'').trim();
+  if(!bol){ toast('Scan the BOL first','err'); kpHide(); $('sh_bol').focus(); return; }
+  const v=($('sh_count').value||'').trim();
+  if(S.pallets>0 && v===''){ toast('Count the pallets on the truck','err'); nextField('sh_count'); return; }
+  const n=asNum(v);
+  if(S.pallets>0 && n!==S.pallets && !confirm('Staged '+S.pallets+' pallets but you counted '+n+'.\n\nShip anyway? (Inventory will come off as staged.)')) return;
+  const btn=$('sh_go'); if(btn){ btn.disabled=true; btn.textContent='Shipping…'; }
+  kpHide();
+  callApi('shipStagedShipment',[{ shipmentId:S.id, bol:bol, user:shipUser(), truckPallets:(v===''?'':n) }]).then(function(r){
+    ((r&&r.moves)||[]).forEach(function(m){ MOVES.push(Object.assign({ kind:'', staged:false, voided:false }, m)); });
+    toast('Shipped · BOL '+bol+' · '+S.pallets+' pallets');
+    shipOpenId='';
+    renderInventory();
+    return loadStaged();
+  }).catch(function(e){ toast('Ship failed — '+((e&&e.message)||'try again'),'err'); console.error(e); if(btn){ btn.disabled=false; btn.textContent='✓ Mark shipped'; } });
+}
+function editShipment(){
+  const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); if(!S) return;
+  if(stDraft.lines.length && stDraft.id!==S.id && !confirm('You have an unsaved shipment on the Stage tab. Replace it with '+(S.order||S.id)+'?')) return;
+  stDraft={ id:S.id, order:S.order||'', from:S.fromBuilding, lines:S.lines.map(function(l){
+    return { item:l.item, desc:l.desc, lot:l.lot, per:Number(l.unitsPerPallet)||0, pallets:l.pallets, loose:l.loose, total:l.total }; }) };
+  stPersist(); shipOpenId='';
+  stFillFrom();
+  if($('st_from').value!==S.fromBuilding){ const o=document.createElement('option'); o.value=o.textContent=S.fromBuilding; $('st_from').appendChild(o); $('st_from').value=S.fromBuilding; }
+  shipMode('stage');
+}
+function cancelShipment(){
+  const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); if(!S) return;
+  if(!confirm('Cancel '+(S.order||S.id)+'? It will no longer be staged (no inventory changes).')) return;
+  callApi('cancelStagedShipment',[S.id, shipUser()]).then(function(){
+    toast('Cancelled '+(S.order||S.id)); shipOpenId=''; return loadStaged();
+  }).catch(function(e){ toast('Cancel failed — '+((e&&e.message)||'try again'),'err'); });
+}
+// Items reserved by staged shipments, for the Inventory tab.
+function computeReserved(){
+  const out={};
+  (STAGED.staged||[]).forEach(function(S){
+    S.lines.forEach(function(l){
+      const id=invKey(l.item,l.desc); if(!id.key) return;
+      const P=out[id.key]||(out[id.key]={ code:id.code, desc:id.desc, qty:0, pallets:0, bldgs:{} });
+      P.qty+=Number(l.total)||0; P.pallets+=Number(l.pallets)||0;
+      P.bldgs[S.fromBuilding]=(P.bldgs[S.fromBuilding]||0)+(Number(l.total)||0);
+    });
+  });
+  return out;
 }
 // Compose the location from the building select + number box (also accepts typing "m03"/"mt12").
 function composeLoc(){
@@ -2087,14 +2462,22 @@ function scrollFieldUp(el, anchorSel){
 // single pointerdown (no mouse+touch double-firing) and edit whichever box is active.
 var activeNumField='f_full';
 var _kpFresh=false;   // when true, the next digit replaces the field (used for the row # box)
-function kpIsField(id){ return id==='f_per'||id==='f_full'||id==='f_extra'||id==='f_loc'||id==='rowNum'||id==='s_pallets'||id==='s_loose'; }
-function kpShow(){ tkHide(); $('cardKeypad').classList.add('show'); $('cardKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('kp-open'); }
-function kpHide(){ kpBackStop(); $('cardKeypad').classList.remove('show'); $('cardKeypad').setAttribute('aria-hidden','true'); document.body.classList.remove('kp-open'); }
+function kpIsField(id){ return id==='f_per'||id==='f_full'||id==='f_extra'||id==='f_loc'||id==='rowNum'||id==='s_pallets'||id==='s_loose'||id==='sh_count'; }
+var _kpPadTO=null;
+function kpShow(){ tkHide(); clearTimeout(_kpPadTO); $('cardKeypad').classList.add('show'); $('cardKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('kp-open'); }
+// soft=true (pad closed because focus moved, e.g. a tap on a button): keep the bottom padding a
+// moment longer so the page doesn't jump under the finger and swallow that tap.
+function kpHide(soft){
+  kpBackStop(); $('cardKeypad').classList.remove('show'); $('cardKeypad').setAttribute('aria-hidden','true');
+  clearTimeout(_kpPadTO);
+  if(soft===true){ _kpPadTO=setTimeout(function(){ if(!$('cardKeypad').classList.contains('show')) document.body.classList.remove('kp-open'); }, 450); }
+  else document.body.classList.remove('kp-open');
+}
 function kpBind(id){
   if(!kpIsField(id)) return;
   activeNumField=id;
   _kpFresh = (id==='rowNum');   // start fresh: first digit replaces the old row number
-  const l=$('kpField'); if(l){ l.textContent=({f_per:'Per unit',f_full:'Full',f_extra:'Extra',f_loc:'Location #',rowNum:'Row #',s_pallets:'Pallets',s_loose:'Loose'})[id]; }
+  const l=$('kpField'); if(l){ l.textContent=({f_per:'Per unit',f_full:'Full',f_extra:'Extra',f_loc:'Location #',rowNum:'Row #',s_pallets:'Pallets',s_loose:'Loose',sh_count:'Pallets on truck'})[id]; }
   kpShow();
   const el=$(id); if(el){ setTimeout(()=>scrollFieldUp(el, id==='f_loc'?'.total-strip':null),40); } // keep it above the pad
 }
@@ -2105,7 +2488,7 @@ function kpOnBlur(){
     if(!$('calcModal').classList.contains('hide')) return;   // calculator is open — leave the pad be
     const a=document.activeElement;
     if(a && (kpIsField(a.id) || $('cardKeypad').contains(a))) return;
-    kpHide();
+    kpHide(true);
   },0);
 }
 document.addEventListener('focusin', function(ev){
@@ -2113,7 +2496,7 @@ document.addEventListener('focusin', function(ev){
   if(!$('cardKeypad').classList.contains('show')) return;
   if(!$('calcModal').classList.contains('hide')) return;     // calculator is open — leave the pad be
   if(a && (kpIsField(a.id) || $('cardKeypad').contains(a))) return;
-  kpHide();
+  kpHide(true);
 });
 function kpTap(e,k){
   if(e){ e.preventDefault(); }
@@ -2129,7 +2512,8 @@ function kpAdvance(){
   else if(activeNumField==='f_full'){ nextField('f_extra'); }
   else if(activeNumField==='f_extra'){ qtyNext(); }   // Loose done -> close pad, reveal To building
   else if(activeNumField==='s_pallets'){ nextField('s_loose'); }      // ship out: Pallets -> Loose
-  else if(activeNumField==='s_loose'){ saveShipment(); }              // ship out: Loose -> record
+  else if(activeNumField==='s_loose'){ stAddLine(); }                 // ship out: Loose -> add line to shipment
+  else if(activeNumField==='sh_count'){ const el=$('sh_count'); if(el) el.blur(); kpHide(); const g=$('sh_go'); if(g) g.scrollIntoView({block:'center',behavior:'smooth'}); }
   else { saveEntry(); }
 }
 /* press-and-hold backspace: one delete on tap, then rapid delete while held */
@@ -2223,13 +2607,13 @@ function tkBuild(){
     + '</div>';
   g.innerHTML=html;
 }
-function tkIsField(id){ return id==='modalInput'||id==='f_desc'||id==='f_weight'||id==='f_type'||id==='searchInput'; }
+function tkIsField(id){ return id==='st_order'||id==='modalInput'||id==='f_desc'||id==='f_weight'||id==='f_type'||id==='searchInput'; }
 function tkShow(){ tkBuild(); kpHide(); $('textKeypad').classList.add('show'); $('textKeypad').setAttribute('aria-hidden','false'); document.body.classList.add('tk-open'); }
 function tkHide(){ tkBackStop(); $('textKeypad').classList.remove('show'); $('textKeypad').setAttribute('aria-hidden','true'); document.body.classList.remove('tk-open'); }
 function tkBind(id){
   if(!tkIsField(id)) return;
   activeTextField=id;
-  const l=$('tkField'); if(l){ l.textContent=({modalInput:'value',f_desc:'Description',f_weight:'Weight',f_type:'Type',searchInput:'Search'})[id]||'value'; }
+  const l=$('tkField'); if(l){ l.textContent=({modalInput:'value',f_desc:'Description',f_weight:'Weight',f_type:'Type',searchInput:'Search',st_order:'Order / customer'})[id]||'value'; }
   tkShow();
   const el=$(id); if(el){ setTimeout(()=>scrollFieldUp(el),40); }
 }
@@ -2260,6 +2644,7 @@ function tkDone(e){
   if(e){ e.preventDefault(); }
   if(activeTextField==='modalInput'){ const ok=$('modalOk'); if(ok) ok.click(); return; }
   if(activeTextField==='searchInput'){ const el=$('searchInput'); if(el) el.blur(); tkHide(); return; }
+  if(activeTextField==='st_order'){ const el=$('st_order'); if(el) el.blur(); tkHide(); focusShipItem(); return; }
   tkAdvance();
 }
 // Done on a card text field moves to the next present text field, then hands off to the number
@@ -2517,6 +2902,8 @@ Promise.all([callApi('getLookups',[]), callApi('getBuildings',[]), callApi('getU
   onData(r[0]);
   loadLogs();               // counts master log -> counted per-building baseline (From tiles)
   loadMoves();              // movement ledger -> stacked on the baseline for live on-hand
+  stRestore();              // an unsaved shipment being staged on this device
+  loadStaged();             // staged shipments (reserved stock + the Ship list)
   initAuth();               // name dropdowns + resume session or show the sign-in screen
 }).catch(onDataFail);
 
