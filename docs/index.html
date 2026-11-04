@@ -695,9 +695,9 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
           </div>
           <div class="scan-input-wrap">
             <span class="readout">›</span>
-            <input id="s_lot" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-                   placeholder="MM/DD/YYYY 01, then Enter" onkeydown="shipLotEnter(event)"
-                   oninput="lotTyped(this)">
+            <input id="s_lot" inputmode="numeric" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   placeholder="type 1020202601 → 10/20/2026 01" onkeydown="shipLotEnter(event)"
+                   oninput="lotTyped(this, event)">
             <button type="button" class="search-x scan-x" id="s_lotX" onclick="const l=document.getElementById('s_lot');l.value='';lotTyped(l);l.focus()" aria-label="Clear">×</button>
           </div>
           <div class="scan-hint"><span id="s_lotHint">Lot = production date + shift, e.g. 10/20/2026 01. Re-scanning a lot already on this shipment adds 1 pallet.</span></div>
@@ -932,7 +932,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v76-multi-building';
+var APP_VERSION = 'v77-lot-slashes';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1366,9 +1366,11 @@ function parseLot(raw){
   if(!t) return { err:'Scan the lot number' };
   let mo, d, y, sh='';
   let m=/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})(?:[\s\-_\/.]*(\d{1,2}))?$/.exec(t);
+  let digits=t;
+  if(!m && /^[\d\/ ]+$/.test(t)) digits=t.replace(/[\/ ]/g,'');   // e.g. auto-slashed "10/20/261"
   if(m){ mo=m[1]; d=m[2]; y=m[3]; sh=m[4]||''; }
-  else if(/^\d+$/.test(t)){
-    const L=t.length;
+  else if(/^\d+$/.test(digits)){
+    const t=digits, L=t.length;
     if(L===8 && /^20/.test(t.slice(4,6))){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4); }        // MMDDYYYY
     else if(L===9||L===10){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4,8); sh=t.slice(8); }      // MMDDYYYY + shift
     else if(L===6){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4); }                               // MMDDYY
@@ -1384,7 +1386,21 @@ function parseLot(raw){
 }
 // Metals (ends/cans) lots default to shift 01; plastics (and unknown items) must say which shift.
 function shipIsMetals(){ const k=state.ship&&state.ship.key; return k==='ends'||k==='cans'; }
-function lotTyped(el){
+// While typing digits, fill in the separators: 10202026 01 -> "10/20/2026 01". Deleting is left
+// alone (so a slash can be backspaced). Typed or scanned separators (/ - . space) are absorbed.
+function lotAutoFormat(v){
+  if(!/^[\d\/ .\-]*$/.test(v)) return v;   // digits plus any of / - . space (typed separators are absorbed)
+  const d=v.replace(/\D/g,'').slice(0,10);
+  let out=d.slice(0,2);
+  if(d.length>=2) out+='/'+d.slice(2,4);
+  if(d.length>=4) out+='/'+d.slice(4,8);
+  if(d.length>=8) out+=' '+d.slice(8,10);
+  return out;
+}
+function lotTyped(el, ev){
+  if(!(ev && ev.inputType && /^delete/.test(ev.inputType))){
+    const f=lotAutoFormat(el.value); if(f!==el.value) el.value=f;
+  }
   const x=$('s_lotX'); if(x) x.classList.toggle('show', el.value.length>0);
   if(state.ship) state.ship.lot='';
 }
