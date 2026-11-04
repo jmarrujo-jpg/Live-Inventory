@@ -206,10 +206,26 @@ input,select{font-family:inherit;font-size:16px}
 .shipqty{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 2px 0 var(--line);display:grid;gap:10px}
 .shipqty .shiphead{margin-bottom:0}
 .btn.addline{width:100%;flex:none}
+.btn.ghost.nextprod{width:100%;flex:none;height:50px;font-size:15px;color:var(--dept);border-color:var(--dept);background:#fff}
+.lotfmt{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--dept-soft);border-radius:6px;padding:2px 7px}
+.shiftbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.shiftbtn{height:86px;border-radius:14px;border:2px solid var(--dept);background:var(--dept-soft);color:var(--dept);font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:800;font-size:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+.shiftbtn small{font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:2px}
+.shiftbtn:active{background:var(--dept);color:#fff}
+.stgroup{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.stgroup.cur{border-color:var(--dept);box-shadow:0 0 0 2px var(--dept-soft)}
+.stgh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 13px;background:var(--dept-soft)}
+.stgh .c{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;color:var(--dept);font-weight:800}
+.stgh .d{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stgh .gt{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:800;font-size:15px;text-align:right;flex:none}
+.stgh .gt small{display:block;font-size:10px;color:var(--ink-soft);font-weight:700}
+.stgroup .entry{border:0;border-top:1px solid var(--line);border-radius:0;margin:0}
+.stgroup .stwarn{padding:0 13px 8px}
 .recent h3 .stsum{font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--dept);text-transform:none;letter-spacing:0}
 .stline{align-items:center}
 .stline .info{cursor:pointer}
-.stline.warn{border-color:#f0d6ad;background:#fffaf2}
+.stgroup.warn{border-color:#f0d6ad}
+.stgroup.warn .stgh{background:#fff4e5}
 .stline.flash{animation:stflash .9s ease}
 @keyframes stflash{0%{background:var(--dept-soft)}100%{background:var(--panel)}}
 .stwarn{font-size:12px;font-weight:700;color:#a15c00;margin-top:4px}
@@ -670,21 +686,21 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
         </div>
 
         <div class="scanbay">
-          <div class="shiphead" id="s_lotHead"><span class="stepbadge">3</span> Scan lot number
+          <div class="shiphead" id="s_lotHead"><span class="stepbadge">3</span> Scan lot number <span class="lotfmt">date + shift</span>
             <svg class="scanico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M14 5v14M18 5v14M21 5v14"/></svg>
           </div>
           <div class="scan-input-wrap">
             <span class="readout">›</span>
             <input id="s_lot" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-                   placeholder="scan or type lot #, then Enter" onkeydown="shipLotEnter(event)"
-                   oninput="document.getElementById('s_lotX').classList.toggle('show', this.value.length>0)">
-            <button type="button" class="search-x scan-x" id="s_lotX" onclick="document.getElementById('s_lot').value='';this.classList.remove('show');document.getElementById('s_lot').focus()" aria-label="Clear">×</button>
+                   placeholder="MM/DD/YYYY 01, then Enter" onkeydown="shipLotEnter(event)"
+                   oninput="lotTyped(this)">
+            <button type="button" class="search-x scan-x" id="s_lotX" onclick="const l=document.getElementById('s_lot');l.value='';lotTyped(l);l.focus()" aria-label="Clear">×</button>
           </div>
-          <div class="scan-hint"><span>Scanning a lot that's already on this shipment adds 1 pallet to it.</span></div>
+          <div class="scan-hint"><span id="s_lotHint">Lot = production date + shift, e.g. 10/20/2026 01. Re-scanning a lot already on this shipment adds 1 pallet.</span></div>
         </div>
 
         <div class="shipqty">
-          <div class="shiphead"><span class="stepbadge">4</span> Pallets in this lot</div>
+          <div class="shiphead"><span class="stepbadge">4</span> Pallets with this lot number</div>
           <div class="qtyrow">
             <div class="fld"><label>Pallets</label>
               <div class="biginput">
@@ -697,17 +713,18 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
           </div>
           <div class="total-strip"><span class="lbl">Units in this line</span>
             <span class="val"><span id="s_total">0</span><small>units</small></span></div>
-          <button type="button" class="btn primary addline" onclick="stAddLine()">＋ Add to shipment</button>
+          <button type="button" class="btn primary addline" onclick="stAddLine()">＋ Add lot to this product</button>
+          <button type="button" class="btn ghost nextprod" id="s_nextProd" onclick="stNextProduct()" hidden>Next product ›</button>
         </div>
 
         <div class="recent">
           <h3><span>This shipment</span><span class="stsum" id="stSum"></span></h3>
-          <div id="stLines"><div class="empty-recent">Scan an item and lot, enter the pallets, then tap Add to shipment.</div></div>
+          <div id="stLines"><div class="empty-recent">Scan a product, then each of its lots with the pallet count.</div></div>
         </div>
 
         <div class="actions">
           <button class="btn ghost" onclick="stDiscard()">Discard</button>
-          <button class="btn primary" id="stSave" onclick="stSave()">📋 Save staged shipment</button>
+          <button class="btn primary" id="stSave" onclick="stSave()">📋 Stage shipment</button>
         </div>
       </div>
 
@@ -802,6 +819,18 @@ html.modal-lock body{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 <div id="toast"></div>
 <div class="buildtag" id="buildTag"></div>
 
+<div id="shiftModal" class="modal hide" onclick="if(event.target===this)shiftCancel()">
+  <div class="modal-card">
+    <div class="modal-title">Add shift number</div>
+    <div class="modal-hint">Plastics lots need the shift. Lot <b id="shiftLotDate" class="mono"></b> — which shift?</div>
+    <div class="shiftbtns">
+      <button type="button" class="shiftbtn" onclick="shiftPick(1)">1<small>→ 01</small></button>
+      <button type="button" class="shiftbtn" onclick="shiftPick(2)">2<small>→ 02</small></button>
+      <button type="button" class="shiftbtn" onclick="shiftPick(3)">3<small>→ 03</small></button>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn ghost" style="flex:1" onclick="shiftCancel()">Cancel</button></div>
+  </div>
+</div>
 <div id="calcModal" class="modal hide" onclick="if(event.target===this)closeCalc()">
   <div class="modal-card calc-card">
     <div class="calc-head">
@@ -899,7 +928,7 @@ var API_SECRET = '';
 
 /* Bump this on every page change — the number shows in the bottom-right corner so you can
    confirm a reload actually picked up the latest page (an old cached page has no tag). */
-var APP_VERSION = 'v74-staged-shipments';
+var APP_VERSION = 'v75-lots-by-product';
 
 /* Call a backend function: callApi('fn', [arg1, arg2]) -> Promise(result). */
 function callApi(fn, args){
@@ -1282,15 +1311,18 @@ function shipLookup(){
     state.ship.item=''; state.ship.desc=''; state.ship.per=0;
     return;
   }
+  state.ship.lot='';
   if(hit){
     state.ship.item = hit.it.code || raw;
     state.ship.desc = hit.it.desc || '';
     state.ship.per  = Number(hit.it.perUnit) || 0;
+    state.ship.key  = hit.key;
     showShipInfo(state.ship.item, state.ship.desc, state.ship.per, false);
   } else {
-    state.ship.item = raw; state.ship.desc=''; state.ship.per=0;
+    state.ship.item = raw; state.ship.desc=''; state.ship.per=0; state.ship.key='';
     showShipInfo(raw, 'Not in the lookup — it will still be recorded', 0, true);
   }
+  stUpdateLotHint(); stRender();
   const lot=$('s_lot'); if(lot) setTimeout(function(){ lot.focus(); }, 40);
 }
 function showShipInfo(code, desc, per, unknown){
@@ -1311,26 +1343,88 @@ function shipClearItem(){
   const x=$('s_itemX'); if(x) x.classList.remove('show');
   const h=$('s_itemHead'); if(h) h.classList.remove('done');
   const info=$('s_itemInfo'); if(info){ info.hidden=true; info.innerHTML=''; }
+  const np=$('s_nextProd'); if(np) np.hidden=true;
+  stUpdateLotHint(); stRender();
   shipCalc(); focusShipItem();
 }
+/* ---- lot numbers: production date + shift, "MM/DD/YYYY SS" (e.g. 10/20/2026 01) ---- */
+// Parse a scanned/typed lot. Accepts 10/20/2026 01, 10-20-26 1, 10/20/2026, 1020202601, 10202026 …
+// Returns {date:'MM/DD/YYYY', shift:'01'|'' } or {err:'…'}.
+function parseLot(raw){
+  const t=String(raw||'').trim().toUpperCase().replace(/\s+/g,' ');
+  if(!t) return { err:'Scan the lot number' };
+  let mo, d, y, sh='';
+  let m=/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})(?:[\s\-_\/.]*(\d{1,2}))?$/.exec(t);
+  if(m){ mo=m[1]; d=m[2]; y=m[3]; sh=m[4]||''; }
+  else if(/^\d+$/.test(t)){
+    const L=t.length;
+    if(L===8 && /^20/.test(t.slice(4,6))){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4); }        // MMDDYYYY
+    else if(L===9||L===10){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4,8); sh=t.slice(8); }      // MMDDYYYY + shift
+    else if(L===6){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4); }                               // MMDDYY
+    else if(L===7||L===8){ mo=t.slice(0,2); d=t.slice(2,4); y=t.slice(4,6); sh=t.slice(6); }       // MMDDYY + shift
+  }
+  if(!mo) return { err:'Lot must be a date + shift, like 10/20/2026 01' };
+  if(y.length===2) y='20'+y;
+  const M=+mo, D=+d, Y=+y, dt=new Date(Y, M-1, D);
+  if(!(M>=1&&M<=12) || dt.getFullYear()!==Y || dt.getMonth()!==M-1 || dt.getDate()!==D)
+    return { err:'"'+t+'" isn’t a real date — lot must be like 10/20/2026 01' };
+  if(sh!==''){ const n=+sh; if(!(n>=1&&n<=3)) return { err:'Shift must be 1, 2 or 3 (got '+sh+')' }; sh='0'+n; }
+  return { date:String(M).padStart(2,'0')+'/'+String(D).padStart(2,'0')+'/'+Y, shift:sh };
+}
+// Metals (ends/cans) lots default to shift 01; plastics (and unknown items) must say which shift.
+function shipIsMetals(){ const k=state.ship&&state.ship.key; return k==='ends'||k==='cans'; }
+function lotTyped(el){
+  const x=$('s_lotX'); if(x) x.classList.toggle('show', el.value.length>0);
+  if(state.ship) state.ship.lot='';
+}
+function stUpdateLotHint(){
+  const h=$('s_lotHint'); if(!h) return;
+  const it=state.ship&&state.ship.item;
+  h.textContent = !it ? 'Lot = production date + shift, e.g. 10/20/2026 01. Re-scanning a lot already on this shipment adds 1 pallet.'
+    : (shipIsMetals() ? 'Metals: scan the date — shift defaults to 01 if it’s missing.'
+                      : 'Plastics: lot must include the shift (01, 02 or 03), e.g. 10/20/2026 02.');
+}
+// Validate + normalize the lot field, asking for the shift on plastics when missing; then run done(lot).
+var _shiftCb=null;
+function shipLotCommit(done){
+  if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
+  if(!(state.ship&&state.ship.item)){ toast('Scan the product code first','err'); focusShipItem(); return; }
+  if(state.ship.lot && state.ship.lot===($('s_lot').value||'').trim()){ done(state.ship.lot); return; }
+  const p=parseLot($('s_lot').value);
+  if(p.err){ toast(p.err,'err'); const l=$('s_lot'); if(l){ kpHide(); l.focus(); if(l.select) l.select(); } return; }
+  const finish=function(shift){
+    const lot=p.date+' '+shift;
+    $('s_lot').value=lot; state.ship.lot=lot;
+    const x=$('s_lotX'); if(x) x.classList.add('show');
+    done(lot);
+  };
+  if(p.shift) return finish(p.shift);
+  if(shipIsMetals()) return finish('01');
+  // plastics with no shift -> block and ask
+  _shiftCb=finish;
+  kpHide(); const l=$('s_lot'); if(l) l.blur();
+  $('shiftLotDate').textContent=p.date;
+  $('shiftModal').classList.remove('hide');
+}
+function shiftPick(n){ $('shiftModal').classList.add('hide'); const cb=_shiftCb; _shiftCb=null; if(cb) cb('0'+n); }
+function shiftCancel(){ $('shiftModal').classList.add('hide'); _shiftCb=null; const l=$('s_lot'); if(l){ l.focus(); if(l.select) l.select(); } }
+
 // Lot scanned: a lot already on this shipment gets +1 pallet (scan-per-pallet ready); a new lot
 // pre-fills 1 pallet and opens the keypad so they can type the real count.
 function shipLotEnter(e){
   if(e.key!=='Enter') return; e.preventDefault();
-  if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
-  const item=state.ship&&state.ship.item;
-  if(!item){ toast('Scan the item number first','err'); focusShipItem(); return; }
-  const lot=($('s_lot').value||'').trim();
-  if(!lot){ toast('Scan the lot number','err'); return; }
-  const L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
-  if(L){
-    L.pallets=(Number(L.pallets)||0)+1; stLineTotal(L); stPersist(); stRender(L);
-    toast('+1 pallet · lot '+lot+' (now '+L.pallets+')');
-    shipResetLine();
-    return;
-  }
-  $('s_pallets').value='1'; $('s_loose').value='0'; shipCalc();
-  const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); if(el.select) el.select(); _kpFresh=true; }
+  shipLotCommit(function(lot){
+    const item=state.ship.item;
+    const L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+    if(L){
+      L.pallets=(Number(L.pallets)||0)+1; stLineTotal(L); stPersist(); stRender(L);
+      toast('+1 pallet · lot '+lot+' (now '+L.pallets+')');
+      shipResetLot();
+      return;
+    }
+    $('s_pallets').value='1'; $('s_loose').value='0'; shipCalc();
+    const el=$('s_pallets'); if(el){ kpBind('s_pallets'); el.focus(); if(el.select) el.select(); _kpFresh=true; }
+  });
 }
 function shipCalc(){
   const per=(state.ship&&state.ship.per)||0;
@@ -1340,23 +1434,38 @@ function shipCalc(){
   return total;
 }
 function stLineTotal(L){ L.total=Math.round((Number(L.pallets)||0)*(Number(L.per)||0)+(Number(L.loose)||0)); return L.total; }
-// Add (or merge into) a line from the scan fields.
+// Add (or merge into) a lot line for the current product. The product stays selected so the next
+// lot can be scanned right away; "scan next product" clears it.
 function stAddLine(){
-  if(!(state.ship&&state.ship.item)){ const raw=($('s_item').value||'').trim(); if(raw) shipLookup(); }
-  const item=state.ship&&state.ship.item;
-  if(!item){ toast('Scan an item number first','err'); focusShipItem(); return; }
-  const lot=($('s_lot').value||'').trim();
-  if(!lot){ toast('Scan the lot number','err'); const l=$('s_lot'); if(l){ kpHide(); l.focus(); } return; }
   const pallets=asNum($('s_pallets').value), loose=asNum($('s_loose').value);
-  if(pallets<=0 && loose<=0){ toast('Enter pallets or loose','err'); nextField('s_pallets'); return; }
-  let L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
-  if(L){ L.pallets=(Number(L.pallets)||0)+pallets; L.loose=(Number(L.loose)||0)+loose; }
-  else { L={ item:item, desc:state.ship.desc||'', lot:lot, per:state.ship.per||0, pallets:pallets, loose:loose }; stDraft.lines.push(L); }
-  stLineTotal(L); stPersist(); stRender(L);
-  toast('Added '+item+' · lot '+lot+' · '+pallets+' pal');
-  shipResetLine();
+  if(!($('s_lot').value||'').trim()){
+    if(!(state.ship&&state.ship.item)){ toast('Scan the product code first','err'); focusShipItem(); return; }
+    toast('Scan the lot number','err'); const l=$('s_lot'); if(l){ kpHide(); l.focus(); } return;
+  }
+  shipLotCommit(function(lot){
+    if(pallets<=0 && loose<=0){ toast('Enter how many pallets have this lot','err'); nextField('s_pallets'); return; }
+    const item=state.ship.item;
+    let L=stDraft.lines.find(function(l){ return norm(l.item)===norm(item) && norm(l.lot)===norm(lot); });
+    if(L){ L.pallets=(Number(L.pallets)||0)+pallets; L.loose=(Number(L.loose)||0)+loose; }
+    else { L={ item:item, desc:state.ship.desc||'', lot:lot, per:state.ship.per||0, key:state.ship.key||'', pallets:pallets, loose:loose }; stDraft.lines.push(L); }
+    stLineTotal(L); stPersist(); stRender(L);
+    toast('Added lot '+lot+' · '+pallets+' pal');
+    shipResetLot();
+  });
 }
-// Clear the scan fields for the next lot (keeps the shipment header).
+// Ready for the next lot of the same product.
+function shipResetLot(){
+  if(state.ship) state.ship.lot='';
+  const l=$('s_lot'); if(l) l.value='';
+  ['s_pallets','s_loose'].forEach(function(id){ const el=$(id); if(el) el.value='0'; });
+  const x=$('s_lotX'); if(x) x.classList.remove('show');
+  const t=$('s_total'); if(t) t.textContent='0';
+  const np=$('s_nextProd'); if(np) np.hidden=!(state.ship&&state.ship.item);
+  kpHide();
+  setTimeout(function(){ const el=$('s_lot'); if(el && !$('stagePane').hidden) el.focus(); }, 60);
+}
+function stNextProduct(){ shipResetLine(); stRender(); }
+// Clear the scan fields entirely (product too).
 function shipResetLine(){
   state.ship=null;
   ['s_item','s_lot'].forEach(function(id){ const el=$(id); if(el) el.value=''; });
@@ -1365,6 +1474,8 @@ function shipResetLine(){
   const h=$('s_itemHead'); if(h) h.classList.remove('done');
   const info=$('s_itemInfo'); if(info){ info.hidden=true; info.innerHTML=''; }
   const t=$('s_total'); if(t) t.textContent='0';
+  const np=$('s_nextProd'); if(np) np.hidden=true;
+  stUpdateLotHint();
   kpHide(); focusShipItem();
 }
 function stBump(i,d){
@@ -1384,11 +1495,13 @@ function stEditLine(i){
   const L=stDraft.lines[i]; if(!L) return;
   stDraft.lines.splice(i,1); stPersist();
   $('s_item').value=L.item; $('s_itemX').classList.add('show');
-  state.ship={ item:L.item, desc:L.desc, per:L.per };
+  const hk=IDXALL[norm(L.item)];
+  state.ship={ item:L.item, desc:L.desc, per:L.per, key:(L.key||(hk?hk.key:'')), lot:L.lot };
   showShipInfo(L.item, L.desc, L.per, !IDXALL[norm(L.item)]);
   $('s_lot').value=L.lot; $('s_lotX').classList.add('show');
   $('s_pallets').value=String(L.pallets||0); $('s_loose').value=String(L.loose||0); shipCalc();
-  stRender();
+  const np=$('s_nextProd'); if(np) np.hidden=false;
+  stUpdateLotHint(); stRender();
   nextField('s_pallets');
 }
 // Units of an item available to stage from a building: on hand minus other staged shipments' reservations.
@@ -1407,37 +1520,43 @@ function stAvailable(code, desc){
 function stRender(flash){
   const host=$('stLines'); if(!host) return;
   const tag=$('stEditTag'); if(tag){ tag.hidden=!stDraft.id; tag.textContent=stDraft.id?('editing '+stDraft.id):''; }
-  const sv=$('stSave'); if(sv) sv.textContent = stDraft.id ? '📋 Update staged shipment' : '📋 Save staged shipment';
+  const sv=$('stSave'); if(sv) sv.textContent = stDraft.id ? '📋 Update staged shipment' : '📋 Stage shipment';
   const lines=stDraft.lines;
   const pal=lines.reduce(function(t,l){ return t+(Number(l.pallets)||0); },0);
   const units=lines.reduce(function(t,l){ return t+(Number(l.total)||0); },0);
   const sum=$('stSum'); if(sum) sum.textContent = lines.length ? (pal+' pallets · '+units.toLocaleString()+' units') : '';
-  if(!lines.length){ host.innerHTML='<div class="empty-recent">Scan an item and lot, enter the pallets, then tap Add to shipment.</div>'; return; }
-  // item-level availability check (inventory isn't tracked per lot)
-  const byItem={};
-  lines.forEach(function(l){ const k=invKey(l.item,l.desc).key; byItem[k]=(byItem[k]||0)+(Number(l.total)||0); });
-  const short={};
-  Object.keys(byItem).forEach(function(k){
-    const l=lines.find(function(x){ return invKey(x.item,x.desc).key===k; });
-    const a=stAvailable(l.item,l.desc);
-    if(a!=null && byItem[k]>a) short[k]=a;
-  });
-  host.innerHTML=lines.map(function(l,i){
+  if(!lines.length){ host.innerHTML='<div class="empty-recent">Scan a product, then each of its lots with the pallet count.</div>'; return; }
+  // group lot lines under their product; item-level availability check (inventory isn't tracked per lot)
+  const groups=[], gmap={};
+  lines.forEach(function(l,i){
     const k=invKey(l.item,l.desc).key;
-    const warn = (k in short) ? '<div class="stwarn">⚠ Only '+Math.max(0,short[k]).toLocaleString()+' available in '+esc(stDraft.from)+' (incl. other staged orders)</div>' : '';
-    return '<div class="entry stline'+((k in short)?' warn':'')+(flash===l?' flash':'')+'">'
-      + '<div class="info" onclick="stEditLine('+i+')">'
-      +   '<div class="c">'+esc(l.item)+' · lot '+esc(l.lot)+'</div>'
-      +   '<div class="d">'+esc(l.desc||'')+'</div>'
-      +   '<div class="m">'+(Number(l.loose)>0?Number(l.loose).toLocaleString()+' loose · ':'')+(Number(l.total)||0).toLocaleString()+' units · tap to edit</div>'
-      +   warn
-      + '</div>'
-      + '<div class="stctl">'
-      +   '<button type="button" class="btn tiny" onclick="stBump('+i+',-1)" aria-label="One less pallet">−</button>'
-      +   '<span class="stpal"><b>'+(Number(l.pallets)||0)+'</b><small>PAL</small></span>'
-      +   '<button type="button" class="btn tiny" onclick="stBump('+i+',1)" aria-label="One more pallet">＋</button>'
-      +   '<button type="button" class="btn tiny x" onclick="stRemove('+i+')" aria-label="Remove line">×</button>'
-      + '</div></div>';
+    let G=gmap[k]; if(!G){ G=gmap[k]={ key:k, item:l.item, desc:l.desc, idx:[], pallets:0, units:0 }; groups.push(G); }
+    G.idx.push(i); G.pallets+=Number(l.pallets)||0; G.units+=Number(l.total)||0;
+  });
+  const curItem=state.ship&&state.ship.item;
+  host.innerHTML=groups.map(function(G){
+    const a=stAvailable(G.item,G.desc);
+    const short=(a!=null && G.units>a);
+    const cur=curItem && norm(curItem)===norm(G.item);
+    return '<div class="stgroup'+(cur?' cur':'')+(short?' warn':'')+'">'
+      + '<div class="stgh"><div style="min-width:0"><div class="c">'+esc(G.item)+(cur?' · adding lots':'')+'</div><div class="d">'+esc(G.desc||'')+'</div></div>'
+      + '<div class="gt">'+G.pallets+' PAL<small>'+G.units.toLocaleString()+' units · '+G.idx.length+' lot'+(G.idx.length===1?'':'s')+'</small></div></div>'
+      + (short ? '<div class="stwarn">⚠ Only '+Math.max(0,a).toLocaleString()+' available in '+esc(stDraft.from)+' (incl. other staged orders)</div>' : '')
+      + G.idx.map(function(i){
+          const l=lines[i];
+          return '<div class="entry stline'+(flash===l?' flash':'')+'">'
+            + '<div class="info" onclick="stEditLine('+i+')">'
+            +   '<div class="c">Lot '+esc(l.lot)+'</div>'
+            +   '<div class="m">'+(Number(l.loose)>0?Number(l.loose).toLocaleString()+' loose · ':'')+(Number(l.total)||0).toLocaleString()+' units · tap to edit</div>'
+            + '</div>'
+            + '<div class="stctl">'
+            +   '<button type="button" class="btn tiny" onclick="stBump('+i+',-1)" aria-label="One less pallet">−</button>'
+            +   '<span class="stpal"><b>'+(Number(l.pallets)||0)+'</b><small>PAL</small></span>'
+            +   '<button type="button" class="btn tiny" onclick="stBump('+i+',1)" aria-label="One more pallet">＋</button>'
+            +   '<button type="button" class="btn tiny x" onclick="stRemove('+i+')" aria-label="Remove lot">×</button>'
+            + '</div></div>';
+        }).join('')
+      + '</div>';
   }).join('');
 }
 function stDiscard(){
@@ -1449,13 +1568,14 @@ function stDiscard(){
 function stSave(){
   if(!stDraft.from){ toast('Pick the building it ships from','err'); const s=$('st_from'); if(s) s.focus(); return; }
   if(!stDraft.lines.length){ toast('Add at least one lot first','err'); focusShipItem(); return; }
+  if(($('s_lot').value||'').trim() && !(state.ship&&state.ship.lot) && !confirm('The lot you scanned hasn’t been added yet. Stage without it?')) return;
   const btn=$('stSave'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   kpHide(); tkHide();
   const payload={ shipmentId:stDraft.id||'', user:shipUser(), order:stDraft.order||'', fromBuilding:stDraft.from,
     lines:stDraft.lines.map(function(l){ return { item:l.item, desc:l.desc, lot:l.lot, pallets:l.pallets, loose:l.loose, unitsPerPallet:(l.per||'') }; }) };
   const pal=stDraft.lines.reduce(function(t,l){ return t+(Number(l.pallets)||0); },0);
   callApi('saveStagedShipment',[payload]).then(function(r){
-    toast('Staged '+((r&&r.shipmentId)||'')+' · '+pal+' pallets');
+    toast('Staged · '+pal+' pallets');
     stDraft={ id:'', order:'', from:stDraft.from, lines:[] }; stPersist();
     const o=$('st_order'); if(o) o.value='';
     shipResetLine(); stRender();
@@ -1570,7 +1690,7 @@ function editShipment(){
   const S=(STAGED.staged||[]).find(function(x){ return x.id===shipOpenId; }); if(!S) return;
   if(stDraft.lines.length && stDraft.id!==S.id && !confirm('You have an unsaved shipment on the Stage tab. Replace it with '+(S.order||S.id)+'?')) return;
   stDraft={ id:S.id, order:S.order||'', from:S.fromBuilding, lines:S.lines.map(function(l){
-    return { item:l.item, desc:l.desc, lot:l.lot, per:Number(l.unitsPerPallet)||0, pallets:l.pallets, loose:l.loose, total:l.total }; }) };
+    const hk=IDXALL[norm(l.item)]; return { item:l.item, desc:l.desc, lot:l.lot, key:(hk?hk.key:''), per:Number(l.unitsPerPallet)||0, pallets:l.pallets, loose:l.loose, total:l.total }; }) };
   stPersist(); shipOpenId='';
   stFillFrom();
   if($('st_from').value!==S.fromBuilding){ const o=document.createElement('option'); o.value=o.textContent=S.fromBuilding; $('st_from').appendChild(o); $('st_from').value=S.fromBuilding; }
