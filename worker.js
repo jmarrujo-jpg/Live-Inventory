@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v16-shipments' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v17-staged-shipments' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -77,6 +77,10 @@ async function handle(fn, args, env) {
   if (fn === 'getMovements') return getMovements(env); // reads back the Movements log (per-building deltas)
   if (fn === 'logMovement') return logMovement(env, args[0]); // writes to the Movements workbook
   if (fn === 'logShipment') return logShipment(env, args[0]); // writes a shipped-out row to the Shipments tab
+  if (fn === 'getStagedShipments') return getStagedShipments(env);      // staged (not yet shipped) shipments
+  if (fn === 'saveStagedShipment') return saveStagedShipment(env, args[0]); // create / replace a staged shipment
+  if (fn === 'shipStagedShipment') return shipStagedShipment(env, args[0]); // BOL + mark shipped -> deduct inventory
+  if (fn === 'cancelStagedShipment') return cancelStagedShipment(env, args[0], args[1]);
   if (fn === 'getUsers') return getUsers(env);                // approved users for the sign-in dropdown (no PINs)
   if (fn === 'signupUser') return signupUser(env, args[0]);   // create a pending account
   if (fn === 'authUser') return authUser(env, args[0], args[1]); // verify name + PIN
@@ -223,6 +227,167 @@ async function logShipment(env, s) {
   ];
   await sheets.appendEnsuring(SHIPMENTS_TAB, row, SHIPMENTS_HEADER);
   return { shipmentId: id, loggedAt: loggedAt, total: total };
+}
+
+// ---------------- staged shipments: stage -> ship (BOL) -> deduct ----------------
+// "Shipment Lines" tab: one row per item + lot line. Every line of a shipment shares its Shipment ID.
+// Status is Staged -> Shipped (or Cancelled). Staging RESERVES stock but does not move it; marking
+// Shipped writes one Movement per line (From building -> "Shipped Out"), which deducts it from the
+// live inventory. Written by position (this order is the contract).
+const SHIPLINES_TAB = 'Shipment Lines';
+const SHIPLINES_HEADER = [
+  'Shipment ID', 'Line', 'Status', 'Staged At', 'Staged By', 'Order / Customer', 'From Building',
+  'Item #', 'Description', 'Lot #', 'Pallets', 'Loose', 'Units Per Pallet', 'Total Units',
+  'BOL #', 'Shipped At', 'Shipped By', 'Truck Pallet Count', 'Movement ID', 'Note',
+];
+const SL = { id: 0, line: 1, status: 2, stagedAt: 3, stagedBy: 4, order: 5, from: 6, item: 7, desc: 8, lot: 9,
+  pallets: 10, loose: 11, per: 12, total: 13, bol: 14, shippedAt: 15, shippedBy: 16, truck: 17, mv: 18, note: 19 };
+const SHIPPED_OUT = 'Shipped Out';   // pseudo-building that shipped stock moves to (not counted as inventory)
+function colLetter(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function nOr0(v) { const n = Number(v); return (v === '' || v == null || isNaN(n)) ? 0 : n; }
+
+// Read every line; returns [{row (1-based sheet row), r (raw values)}].
+async function readShipLines(sheets) {
+  let values;
+  try { values = await sheets.readAll(SHIPLINES_TAB); }
+  catch (e) { if (String((e && e.message) || '').indexOf('Unable to parse range') !== -1) return []; throw e; }
+  const out = [];
+  for (let n = 1; n < values.length; n++) {
+    const r = values[n] || [];
+    if (!str_(r[SL.id])) continue;
+    out.push({ row: n + 1, r: r });
+  }
+  return out;
+}
+function groupShipments(lines) {
+  const map = {}, order = [];
+  lines.forEach(function (L) {
+    const r = L.r, id = str_(r[SL.id]);
+    let S = map[id];
+    if (!S) {
+      S = map[id] = { id: id, status: str_(r[SL.status]) || 'Staged', stagedAt: str_(r[SL.stagedAt]), stagedBy: str_(r[SL.stagedBy]),
+        order: str_(r[SL.order]), fromBuilding: str_(r[SL.from]), bol: str_(r[SL.bol]), shippedAt: str_(r[SL.shippedAt]),
+        shippedBy: str_(r[SL.shippedBy]), lines: [], rows: [] };
+      order.push(id);
+    }
+    S.rows.push(L.row);
+    S.lines.push({ line: nOr0(r[SL.line]), item: str_(r[SL.item]), desc: str_(r[SL.desc]), lot: str_(r[SL.lot]),
+      pallets: nOr0(r[SL.pallets]), loose: nOr0(r[SL.loose]), unitsPerPallet: num_(r[SL.per]), total: nOr0(r[SL.total]) });
+  });
+  return order.map(function (id) {
+    const S = map[id];
+    S.lines.sort(function (a, b) { return a.line - b.line; });
+    S.pallets = S.lines.reduce(function (t, l) { return t + l.pallets; }, 0);
+    S.units = S.lines.reduce(function (t, l) { return t + l.total; }, 0);
+    return S;
+  });
+}
+// Staged shipments (open ones) plus the most recent shipped ones, for the Ship-out screen.
+async function getStagedShipments(env) {
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const all = groupShipments(await readShipLines(sheets)).map(function (S) { delete S.rows; return S; });
+  const staged = all.filter(function (S) { return /^staged$/i.test(S.status); });
+  const shipped = all.filter(function (S) { return /^shipped$/i.test(S.status); }).slice(-15).reverse();
+  return { staged: staged, shipped: shipped };
+}
+// Create or replace a staged shipment. s = {shipmentId?, user, order, fromBuilding, lines:[{item,desc,lot,pallets,loose,unitsPerPallet}]}
+async function saveStagedShipment(env, s) {
+  s = s || {};
+  const lines = Array.isArray(s.lines) ? s.lines.filter(function (l) { return l && str_(l.item); }) : [];
+  if (!lines.length) throw new Error('Add at least one item to the shipment');
+  if (!str_(s.fromBuilding)) throw new Error('Pick the building it ships from');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const when = new Date();
+  let id = str_(s.shipmentId);
+  let stagedAt = when.toISOString(), stagedBy = str_(s.user);
+  if (id) {
+    // Editing: only a still-Staged shipment can change. Remove its old lines (bottom-up), then re-add.
+    const S = groupShipments(await readShipLines(sheets)).find(function (x) { return x.id === id; });
+    if (S) {
+      if (!/^staged$/i.test(S.status)) throw new Error('Shipment ' + id + ' is already ' + S.status.toLowerCase());
+      stagedAt = S.stagedAt || stagedAt; stagedBy = S.stagedBy || stagedBy;
+      const sid = await sheets.sheetId(SHIPLINES_TAB);
+      const rows = S.rows.slice().sort(function (a, b) { return b - a; });
+      for (let i = 0; i < rows.length; i++) await sheets.deleteRow(sid, rows[i]);
+    }
+  } else {
+    id = 'SH-' + when.getTime().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  }
+  const rows = lines.map(function (l, i) {
+    const pallets = nOr0(l.pallets), loose = nOr0(l.loose);
+    const per = (l.unitsPerPallet === '' || l.unitsPerPallet == null || isNaN(Number(l.unitsPerPallet))) ? '' : Number(l.unitsPerPallet);
+    const total = Math.round(pallets * (Number(per) || 0) + loose);
+    const row = new Array(SHIPLINES_HEADER.length).fill('');
+    row[SL.id] = id; row[SL.line] = i + 1; row[SL.status] = 'Staged'; row[SL.stagedAt] = stagedAt; row[SL.stagedBy] = stagedBy;
+    row[SL.order] = str_(s.order); row[SL.from] = str_(s.fromBuilding); row[SL.item] = str_(l.item); row[SL.desc] = str_(l.desc);
+    row[SL.lot] = str_(l.lot); row[SL.pallets] = pallets; row[SL.loose] = loose; row[SL.per] = per; row[SL.total] = total;
+    row[SL.note] = str_(l.note);
+    return row;
+  });
+  await sheets.appendRowsEnsuring(SHIPLINES_TAB, rows, SHIPLINES_HEADER);
+  return { shipmentId: id, lines: rows.length };
+}
+// Ship it: p = {shipmentId, bol, user, truckPallets}. Marks every line Shipped (with the BOL) and writes
+// one Movement per line From building -> "Shipped Out" so the stock leaves the live inventory.
+async function shipStagedShipment(env, p) {
+  p = p || {};
+  const id = str_(p.shipmentId);
+  if (!id) throw new Error('Missing shipment');
+  if (!str_(p.bol)) throw new Error('Scan the BOL first');
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const S = groupShipments(await readShipLines(sheets)).find(function (x) { return x.id === id; });
+  if (!S) throw new Error('Shipment ' + id + ' not found');
+  if (!/^staged$/i.test(S.status)) throw new Error('Shipment ' + id + ' is already ' + S.status.toLowerCase());
+  const when = new Date(), shippedAt = when.toISOString(), user = str_(p.user), bol = str_(p.bol);
+  const truck = (p.truckPallets === '' || p.truckPallets == null) ? '' : nOr0(p.truckPallets);
+  const mvIds = S.lines.map(function (l, i) { return 'MV-' + id + '-' + (i + 1); });
+  // 1) flip the status first (BOL, who, when) — if this fails nothing has moved yet
+  const setStatus = async function (status, withShipInfo) {
+    const data = [];
+    S.rows.forEach(function (row, i) {
+      data.push({ range: SHIPLINES_TAB + '!' + colLetter(SL.status) + row, values: [[status]] });
+      data.push({ range: SHIPLINES_TAB + '!' + colLetter(SL.bol) + row + ':' + colLetter(SL.mv) + row,
+        values: [withShipInfo ? [bol, shippedAt, user, truck, mvIds[i] || ''] : ['', '', '', '', '']] });
+    });
+    await sheets.batchUpdate(data);
+  };
+  await setStatus('Shipped', true);
+  // 2) deduct: one movement per line, From building -> Shipped Out
+  const mvRows = S.lines.map(function (l, i) {
+    const pallets = l.pallets, per = l.unitsPerPallet;
+    const entry = pallets > 0 ? 'Pallets' : 'Each';
+    return [
+      mvIds[i], shippedAt, shippedAt.slice(0, 10), user, l.item, l.item, l.desc, '', entry,
+      pallets > 0 ? pallets : l.loose, entry, per, l.total,
+      S.fromBuilding, '', SHIPPED_OUT, '', 'BOL ' + bol, (l.lot ? 'Lot ' + l.lot + ' | ' : '') + 'Shipment ' + id + (l.loose && pallets > 0 ? ' | +' + l.loose + ' loose' : ''),
+      'Shipped Out', '',
+    ];
+  });
+  try {
+    await sheets.appendRowsEnsuring(MOVEMENTS_TAB, mvRows, MOVEMENTS_HEADER);
+  } catch (e) {
+    // put the shipment back to Staged so it can be shipped again without double-deducting
+    try { await setStatus('Staged', false); } catch (e2) { /* best effort */ }
+    throw e;
+  }
+  return { shipmentId: id, shippedAt: shippedAt, bol: bol, movements: mvRows.length, units: S.units, pallets: S.pallets,
+    moves: S.lines.map(function (l, i) { return { movementId: mvIds[i], product: l.item, barcode: l.item, desc: l.desc, qtyEach: l.total,
+      fromBuilding: S.fromBuilding, toBuilding: SHIPPED_OUT, flags: 'Shipped Out' }; }) };
+}
+async function cancelStagedShipment(env, shipmentId, user) {
+  const id = str_(shipmentId);
+  const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
+  const S = groupShipments(await readShipLines(sheets)).find(function (x) { return x.id === id; });
+  if (!S) throw new Error('Shipment ' + id + ' not found');
+  if (!/^staged$/i.test(S.status)) throw new Error('Shipment ' + id + ' is already ' + S.status.toLowerCase());
+  const note = 'Cancelled by ' + (str_(user) || '?') + ' ' + new Date().toISOString();
+  const data = [];
+  S.rows.forEach(function (row) {
+    data.push({ range: SHIPLINES_TAB + '!' + colLetter(SL.status) + row, values: [['Cancelled']] });
+    data.push({ range: SHIPLINES_TAB + '!' + colLetter(SL.note) + row, values: [[note]] });
+  });
+  await sheets.batchUpdate(data);
+  return { shipmentId: id, status: 'Cancelled' };
 }
 
 // Read the Movements log back so the app can stack movements onto the counted baseline and show a
@@ -571,6 +736,27 @@ async function makeSheets(env, overrideId) {
         + '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER', { headers: auth });
       const values = j.values || [];
       return values.slice(1); // drop the header row
+    },
+    // Write several ranges in one request.
+    async batchUpdate(data) {
+      return call(base + '/values:batchUpdate',
+        { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valueInputOption: 'RAW', data: data }) });
+    },
+    async appendRows(tab, rows) {
+      return call(base + '/values/' + encodeURIComponent(tab + '!A1') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+        { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ values: rows }) });
+    },
+    async appendRowsEnsuring(tab, rows, header) {
+      try {
+        return await this.appendRows(tab, rows);
+      } catch (err) {
+        if (String((err && err.message) || '').indexOf('Unable to parse range') !== -1) {
+          await this.ensureTab(tab, header);
+          return await this.appendRows(tab, rows);
+        }
+        throw err;
+      }
     },
     async append(tab, row) {
       // Anchor the append at A1 so Sheets treats the header row (A1) as the table and always
