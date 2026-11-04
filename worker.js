@@ -50,7 +50,7 @@ export default {
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v17-staged-shipments' }, 200);
+    if (request.method === 'GET') return json({ ok: true, service: 'csc-live-inventory', build: 'v18-multi-building' }, 200);
     if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
 
     let payload;
@@ -271,7 +271,7 @@ function groupShipments(lines) {
       order.push(id);
     }
     S.rows.push(L.row);
-    S.lines.push({ line: nOr0(r[SL.line]), item: str_(r[SL.item]), desc: str_(r[SL.desc]), lot: str_(r[SL.lot]),
+    S.lines.push({ line: nOr0(r[SL.line]), fromBuilding: str_(r[SL.from]) || S.fromBuilding, item: str_(r[SL.item]), desc: str_(r[SL.desc]), lot: str_(r[SL.lot]),
       pallets: nOr0(r[SL.pallets]), loose: nOr0(r[SL.loose]), unitsPerPallet: num_(r[SL.per]), total: nOr0(r[SL.total]) });
   });
   return order.map(function (id) {
@@ -279,6 +279,10 @@ function groupShipments(lines) {
     S.lines.sort(function (a, b) { return a.line - b.line; });
     S.pallets = S.lines.reduce(function (t, l) { return t + l.pallets; }, 0);
     S.units = S.lines.reduce(function (t, l) { return t + l.total; }, 0);
+    // a shipment can pull from several buildings — each line carries its own
+    S.buildings = S.lines.map(function (l) { return l.fromBuilding; })
+      .filter(function (b, i, a) { return b && a.indexOf(b) === i; });
+    S.fromBuilding = S.buildings.join(' + ');
     return S;
   });
 }
@@ -290,12 +294,13 @@ async function getStagedShipments(env) {
   const shipped = all.filter(function (S) { return /^shipped$/i.test(S.status); }).slice(-15).reverse();
   return { staged: staged, shipped: shipped };
 }
-// Create or replace a staged shipment. s = {shipmentId?, user, order, fromBuilding, lines:[{item,desc,lot,pallets,loose,unitsPerPallet}]}
+// Create or replace a staged shipment. s = {shipmentId?, user, order, fromBuilding?, lines:[{item,desc,lot,fromBuilding,pallets,loose,unitsPerPallet}]}
+// Each line names the building it's pulled from (falls back to s.fromBuilding).
 async function saveStagedShipment(env, s) {
   s = s || {};
   const lines = Array.isArray(s.lines) ? s.lines.filter(function (l) { return l && str_(l.item); }) : [];
   if (!lines.length) throw new Error('Add at least one item to the shipment');
-  if (!str_(s.fromBuilding)) throw new Error('Pick the building it ships from');
+  lines.forEach(function (l) { if (!str_(l.fromBuilding) && !str_(s.fromBuilding)) throw new Error('Lot ' + str_(l.lot) + ' of ' + str_(l.item) + ' has no building'); });
   const sheets = await makeSheets(env, MOVEMENTS_SHEET_ID);
   const when = new Date();
   let id = str_(s.shipmentId);
@@ -319,7 +324,7 @@ async function saveStagedShipment(env, s) {
     const total = Math.round(pallets * (Number(per) || 0) + loose);
     const row = new Array(SHIPLINES_HEADER.length).fill('');
     row[SL.id] = id; row[SL.line] = i + 1; row[SL.status] = 'Staged'; row[SL.stagedAt] = stagedAt; row[SL.stagedBy] = stagedBy;
-    row[SL.order] = str_(s.order); row[SL.from] = str_(s.fromBuilding); row[SL.item] = str_(l.item); row[SL.desc] = str_(l.desc);
+    row[SL.order] = str_(s.order); row[SL.from] = str_(l.fromBuilding) || str_(s.fromBuilding); row[SL.item] = str_(l.item); row[SL.desc] = str_(l.desc);
     row[SL.lot] = str_(l.lot); row[SL.pallets] = pallets; row[SL.loose] = loose; row[SL.per] = per; row[SL.total] = total;
     row[SL.note] = str_(l.note);
     return row;
@@ -359,7 +364,7 @@ async function shipStagedShipment(env, p) {
     return [
       mvIds[i], shippedAt, shippedAt.slice(0, 10), user, l.item, l.item, l.desc, '', entry,
       pallets > 0 ? pallets : l.loose, entry, per, l.total,
-      S.fromBuilding, '', SHIPPED_OUT, '', 'BOL ' + bol, (l.lot ? 'Lot ' + l.lot + ' | ' : '') + 'Shipment ' + id + (l.loose && pallets > 0 ? ' | +' + l.loose + ' loose' : ''),
+      l.fromBuilding, '', SHIPPED_OUT, '', 'BOL ' + bol, (l.lot ? 'Lot ' + l.lot + ' | ' : '') + 'Shipment ' + id + (l.loose && pallets > 0 ? ' | +' + l.loose + ' loose' : ''),
       'Shipped Out', '',
     ];
   });
@@ -372,7 +377,7 @@ async function shipStagedShipment(env, p) {
   }
   return { shipmentId: id, shippedAt: shippedAt, bol: bol, movements: mvRows.length, units: S.units, pallets: S.pallets,
     moves: S.lines.map(function (l, i) { return { movementId: mvIds[i], product: l.item, barcode: l.item, desc: l.desc, qtyEach: l.total,
-      fromBuilding: S.fromBuilding, toBuilding: SHIPPED_OUT, flags: 'Shipped Out' }; }) };
+      fromBuilding: l.fromBuilding, toBuilding: SHIPPED_OUT, flags: 'Shipped Out' }; }) };
 }
 async function cancelStagedShipment(env, shipmentId, user) {
   const id = str_(shipmentId);
